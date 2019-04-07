@@ -14,13 +14,3 @@
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see <https://www.gnu.org/licenses/>. 
 */
-
-/// Parses text in a Textile Markup Language and returns to HTML.
-library textile;
-
-export 'package:markdown/markdown.dart';
-
-export 'src/block_parser.dart';
-export 'src/document.dart';
-export 'src/html_renderer.dart';
-export 'src/inline_parser.dart';

@@ -3,13 +3,12 @@ version: 0.1.0
 
 description: A portable interpreter of Textile Markup Language into HTML written in dart language.
 author: Omkar Todkar <omtodkar@gmail.com>
-# homepage: https://www.example.com
 
 environment:
   sdk: '>=2.1.0 <3.0.0'
 
-#dependencies:
-#  path: ^1.4.1
+dependencies:
+  markdown: '2.0.2'
 
 dev_dependencies:
   pedantic: ^1.3.0
