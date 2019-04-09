@@ -14,5 +14,24 @@
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see <https://www.gnu.org/licenses/>. 
 */
+import 'dart:io';
 
-void main() {}
+import 'package:test/test.dart';
+import 'package:textile/textile.dart';
+
+List<String> read(String path) => File(path).readAsLinesSync();
+
+void main() {
+  final lines = read("test/examples/block_paragraph.unit");
+
+  group('BlockSyntax', () {
+    test('test Paragraph to detect block', () {
+      var paragraph = ParagraphSyntax();
+      var parser = BlockParser(lines, Document());
+      var node = paragraph.parse(parser);
+
+      print("content: ${node.textContent}");
+      expect(node.textContent, hasLength(3022));
+    });
+  });
+}

@@ -6,7 +6,7 @@
     "configurations": [
         {
             "name": "Dart",
-            "program": "example/textile_example.dart",
+            "program": "test/textile_tests.dart",
             "request": "launch",
             "type": "dart"
         }

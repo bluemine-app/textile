@@ -18,8 +18,7 @@
 /// Parses text in a Textile Markup Language and returns to HTML.
 library textile;
 
-export 'package:markdown/markdown.dart';
-
+export 'src/base.dart';
 export 'src/block_parser.dart';
 export 'src/document.dart';
 export 'src/html_renderer.dart';
