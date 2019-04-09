@@ -17,6 +17,7 @@
 import 'base.dart';
 import 'document.dart';
 
+//region Common Expressions
 /// The line contains only whitespace or is empty.
 /// check for regex at https://regex101.com/r/iF9lHI/1
 final _emptyPattern = RegExp(r'^(?:[ \t]*)$');
@@ -24,13 +25,21 @@ final _emptyPattern = RegExp(r'^(?:[ \t]*)$');
 /// One or more whitespace, for compressing.
 final _oneOrMoreWhitespacePattern = RegExp('[ \n\r\t]+');
 
+/// The line starts with [h] following 1-6 and then alignment >, = or <
+/// check for regex at https://regex101.com/r/wKyEhP/2
+final _headerPattern = RegExp(r'^(h[1-6])([ ><=]?)\.(.*)');
+
 /// The line are starts with 'p. ' or by any character
 /// but not starting with whitespace.
 /// check for regex at https://regex101.com/r/Pv37oS/1
 final _paragraphPattern =
     RegExp(r'^([^\s][p\.]\s)(.*)|^[^\s].*$', multiLine: true);
+//endregion
 
-/// BlockParser extending [BlockParser].
+/// Alignment abbreviations values.
+final alignmentAbbreviations = {"=": "center", "<": "left", ">": "right"};
+
+/// BlockParser.
 class BlockParser {
   final List<String> lines;
 
@@ -51,10 +60,7 @@ class BlockParser {
   bool encounteredBlankLine = false;
 
   /// All standard [BlockSyntax] to be parsed
-  final List<BlockSyntax> standardBlockSyntaxes = [
-    const EmptyBlockSyntax(),
-    ParagraphSyntax(),
-  ];
+  final List<BlockSyntax> standardBlockSyntaxes = [];
 
   BlockParser(this.lines, this.document) {
     blockSyntaxes.addAll(document.blockSyntaxes);
@@ -112,7 +118,8 @@ class BlockParser {
           var block = syntax.parse(this);
           if (block != null) blocks.add(block);
           break;
-        }
+        } else //TODO applied for test purpose only.
+          advance();
       }
     }
 
@@ -174,9 +181,34 @@ class EmptyBlockSyntax extends BlockSyntax {
   Node parse(BlockParser parser) {
     parser.encounteredBlankLine = true;
     parser.advance();
-
     return null;
   }
+}
+
+class HeaderSyntax extends BlockSyntax {
+  const HeaderSyntax();
+
+  @override
+  RegExp get pattern => _headerPattern;
+
+  /// [Match] contains header type, optionally any one of
+  /// [alignmentAbbreviations], ending dot and text content.
+  ///
+  /// match[1] anyOneOf(h1...h6)
+  /// match[2] anyOneOf(><=) or null
+  /// match[3] textContent
+  @override
+  Node parse(BlockParser parser) {
+    var match = pattern.firstMatch(parser.current);
+    parser.advance();
+    var contents = UnparsedContent(match[3].trim());
+    var alignment = _parseHeaderAlignment(match[2]);
+    return Element(match[1], [contents], alignment);
+  }
+
+  Map<String, String> _parseHeaderAlignment(String value) => value == null
+      ? {}
+      : {"style": "text-align:${alignmentAbbreviations[value]};"};
 }
 
 /// Parses Paragraph blocks
@@ -204,7 +236,7 @@ class ParagraphSyntax extends BlockSyntax {
       return Text('');
     } else {
       var contents = UnparsedContent(paragraphLines.join('\n'));
-      return Element('p', [contents]);
+      return Element.create('p', [contents]);
     }
   }
 

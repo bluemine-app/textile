@@ -22,16 +22,25 @@ import 'package:textile/textile.dart';
 List<String> read(String path) => File(path).readAsLinesSync();
 
 void main() {
-  final lines = read("test/examples/block_paragraph.unit");
+  final lines = read("test/units/block_paragraph.unit");
+
+  /// used for [HeaderSyntax] test.
+  var headers = [
+    "Art of Trackers",
+    "Types of Trackers",
+    "Priority levels",
+    "Describing the Issue",
+    "Issue Description",
+    "Component and Assignee"
+  ];
 
   group('BlockSyntax', () {
-    test('test Paragraph to detect block', () {
-      var paragraph = ParagraphSyntax();
-      var parser = BlockParser(lines, Document());
-      var node = paragraph.parse(parser);
-
-      print("content: ${node.textContent}");
-      expect(node.textContent, hasLength(3022));
+    test('test header parser to parse exact title content from document', () {
+      var document = Document(blockSyntaxes: [HeaderSyntax()]);
+      var nodes = document.parseLines(lines);
+      var contents =
+          nodes.map((node) => node.textContent).toList(growable: false);
+      expect(contents, headers);
     });
   });
 }

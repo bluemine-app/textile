@@ -31,10 +31,14 @@ class Element implements Node {
   final String tag;
   final List<Node> children;
   final Map<String, String> attributes;
+
   String generatedId;
 
+  /// Instantiates a [tag] Element with [children] and [attributes].
+  Element(this.tag, this.children, this.attributes);
+
   /// Instantiates a [tag] Element with [children].
-  Element(this.tag, this.children) : attributes = <String, String>{};
+  Element.create(this.tag, this.children) : attributes = <String, String>{};
 
   /// Instantiates an empty, self-closing [tag] Element.
   Element.empty(this.tag)
@@ -71,6 +75,7 @@ class Element implements Node {
 /// A plain text element.
 class Text implements Node {
   final String text;
+
   Text(this.text);
 
   void accept(NodeVisitor visitor) => visitor.visitText(this);
@@ -86,6 +91,7 @@ class Text implements Node {
 /// definitions.
 class UnparsedContent implements Node {
   final String textContent;
+
   UnparsedContent(this.textContent);
 
   void accept(NodeVisitor visitor) => null;

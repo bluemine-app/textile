@@ -43,7 +43,7 @@ class Document {
   List<Node> parseLines(List<String> lines) {
     var nodes = BlockParser(lines, this).parseLines();
     _parseInlineContent(nodes);
-    return null;
+    return nodes;
   }
 
   List<Node> parseInline(String text) {
@@ -55,9 +55,11 @@ class Document {
       var node = nodes[i];
       if (node is UnparsedContent) {
         var inlineNodes = parseInline(node.textContent);
-        nodes.removeAt(i);
-        nodes.insertAll(i, inlineNodes);
-        i += inlineNodes.length - 1;
+        if (inlineNodes != null) {
+          nodes.removeAt(i);
+          nodes.insertAll(i, inlineNodes);
+          i += inlineNodes.length - 1;
+        }
       } else if (node is Element && node.children != null) {
         _parseInlineContent(node.children);
       }
