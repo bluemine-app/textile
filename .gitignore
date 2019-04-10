@@ -108,6 +108,7 @@ $RECYCLE.BIN/
 
 # Sensitive or high-churn files
 .idea/**/dataSources/
+.idea/**/sonarlint/
 .idea/**/dataSources.ids
 .idea/**/dataSources.local.xml
 .idea/**/sqlDataSources.xml
