@@ -26,21 +26,28 @@ List<String> read(String path) => File(path).readAsLinesSync();
 void main() {
   group('BlockSyntax', () {
     test('Test HeaderSyntax', () {
-      var document = Document(blockSyntaxes: [HeaderSyntax()]);
-      final lines = read("test/units/block_paragraph.unit");
-      var nodes = document.parseLines(lines);
+      var document = Document();
+      var nodes = document.parseLines(read("test/units/block_paragraph.unit"));
       var contents =
           nodes.map((node) => node.textContent).toList(growable: false);
-      expect(contents, equals(headers));
+      expect(contents, containsAllInOrder(headers));
     });
 
     test('Test PreFormattedSyntax', () {
-      var document = Document(blockSyntaxes: [PreFormattedSyntax()]);
-      final lines = read("test/units/code_paragraph.unit");
-      var nodes = document.parseLines(lines);
+      var document = Document();
+      var nodes = document.parseLines(read("test/units/code_paragraph.unit"));
       var contents =
           nodes.map((node) => node.textContent).toList(growable: false);
-      expect(contents, equals(codeBlocks));
+      expect(contents, containsAllInOrder(codeBlocks));
+    });
+
+    test('Test All BlockSyntax', () {
+      var document = Document();
+      var nodes = document.parseLines(read("test/units/code_paragraph.unit"));
+      var contents =
+          nodes.map((node) => node.textContent).toList(growable: false);
+      print(contents.join('\n'));
+      expect(contents, containsAllInOrder(codeBlocks));
     });
   });
 }

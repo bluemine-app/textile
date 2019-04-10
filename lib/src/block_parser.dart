@@ -44,7 +44,6 @@ final _newBlockPattern =
 /// Textile abbreviations mapped with their values.
 final abbreviations = {
   /* CSS styles */
-
   "=": "center",
   "<": "left",
   ">": "right",
@@ -55,8 +54,10 @@ final abbreviations = {
   "bq": "blockquote"
 };
 
-/// BlockParser.
+/// BlockParser to parse series of lines into blocks of Textile suitable
+/// for further inline parsing.
 class BlockParser {
+  /// Raw lines of document.
   final List<String> lines;
 
   /// The Markdown document this parser is parsing.
@@ -76,7 +77,11 @@ class BlockParser {
   bool encounteredBlankLine = false;
 
   /// All standard [BlockSyntax] to be parsed
-  final List<BlockSyntax> standardBlockSyntaxes = [];
+  final List<BlockSyntax> standardBlockSyntaxes = [
+    const EmptyBlockSyntax(),
+    const HeaderSyntax(),
+    const PreFormattedSyntax()
+  ];
 
   BlockParser(this.lines, this.document) {
     blockSyntaxes.addAll(document.blockSyntaxes);
@@ -129,14 +134,17 @@ class BlockParser {
   List<Node> parseLines() {
     var blocks = <Node>[];
     while (!isDone) {
+      var shouldAdvance = true;
       for (var syntax in blockSyntaxes) {
         if (syntax.canParse(this)) {
           var block = syntax.parse(this);
           if (block != null) blocks.add(block);
+          shouldAdvance = false;
           break;
-        } else //TODO applied for test purpose only.
-          advance();
+        }
       }
+      //FIXME: remove this hack once all standard syntax are complete.
+      if (shouldAdvance) advance();
     }
 
     return blocks;
@@ -193,6 +201,7 @@ abstract class BlockSyntax {
           : {};
 }
 
+/// Parse empty lines in document.
 class EmptyBlockSyntax extends BlockSyntax {
   const EmptyBlockSyntax();
 
@@ -207,6 +216,7 @@ class EmptyBlockSyntax extends BlockSyntax {
   }
 }
 
+/// Parse headers in document.
 class HeaderSyntax extends BlockSyntax {
   const HeaderSyntax();
 
@@ -232,6 +242,7 @@ class HeaderSyntax extends BlockSyntax {
   }
 }
 
+/// Parse Code Blocks and Pre-formatted content in document.
 class PreFormattedSyntax extends BlockSyntax {
   const PreFormattedSyntax();
 
@@ -260,6 +271,7 @@ class PreFormattedSyntax extends BlockSyntax {
     var dots = match[2].length;
     var inlineContent = match[3];
 
+    //TODO: optimize below code.
     String escaped;
     if (dots > 1) {
       var content = <String>[];
