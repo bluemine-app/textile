@@ -34,13 +34,34 @@ void main() {
     "Component and Assignee"
   ];
 
+  var codeblocks = [
+    '''This document explains how to describe issues in a way that makes it easier for developers to understand and reproduce issues, and how to test code fixes.
+
+Once you are logged in, follow these steps:
+
+* Find out if the issue you encountered has been reported before:
+** If the issue has been reported before and the issue is still open, you can add a description of how you encountered the bug (see guidelines under "Describing the issue", below);
+** If the issue was reported in the past and closed, you can reopen it and describe how you encountered the issue. (Alternatively, it is possible to create a new bug and link the old one with the new one.)
+* If the issue is new, you can report it by using the "New Issue":/projects/open-bluemine/issues/new from drop down menu in top left "+" button.''',
+    "The Redmine &lt;b&gt;setup&lt;/b&gt; used by Bluemine distinguishes between several types of issues. The most important ones are:",
+    "Use heading level 4 for each of these sections. You can do this in JIRA by putting h4. in front of the heading text."
+  ];
+
   group('BlockSyntax', () {
     test('test header parser to parse exact title content from document', () {
       var document = Document(blockSyntaxes: [HeaderSyntax()]);
       var nodes = document.parseLines(lines);
       var contents =
           nodes.map((node) => node.textContent).toList(growable: false);
-      expect(contents, headers);
+      expect(contents, equals(headers));
+    });
+
+    test('test pre formatted and code blocks from document', () {
+      var document = Document(blockSyntaxes: [PreFormattedSyntax()]);
+      var nodes = document.parseLines(lines);
+      var contents =
+          nodes.map((node) => node.textContent).toList(growable: false);
+      expect(contents, equals(codeblocks));
     });
   });
 }

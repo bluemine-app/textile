@@ -14,8 +14,12 @@
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see <https://www.gnu.org/licenses/>. 
 */
+
+import 'dart:core';
+
 import 'base.dart';
 import 'document.dart';
+import 'util.dart';
 
 //region Common Expressions
 /// The line contains only whitespace or is empty.
@@ -23,21 +27,33 @@ import 'document.dart';
 final _emptyPattern = RegExp(r'^(?:[ \t]*)$');
 
 /// One or more whitespace, for compressing.
-final _oneOrMoreWhitespacePattern = RegExp('[ \n\r\t]+');
+// final _oneOrMoreWhitespacePattern = RegExp('[ \n\r\t]+');
 
-/// The line starts with [h] following 1-6 and then alignment >, = or <
-/// check for regex at https://regex101.com/r/wKyEhP/2
-final _headerPattern = RegExp(r'^(h[1-6])([ ><=]?)\.(.*)');
+/// Find if line is new block
+/// check for regex at https://regex101.com/r/BwoJnd/1
+final _newBlockPattern =
+    RegExp(r'(^p|^h[1-6]|^notextile|^bq|^bc|^pre|^fn\d+)(\. )');
 
 /// The line are starts with 'p. ' or by any character
 /// but not starting with whitespace.
 /// check for regex at https://regex101.com/r/Pv37oS/1
-final _paragraphPattern =
-    RegExp(r'^([^\s][p\.]\s)(.*)|^[^\s].*$', multiLine: true);
+/*final _paragraphPattern =
+    RegExp(r'^([^\s][p\.]\s)(.*)|^[^\s].*$', multiLine: true);*/
 //endregion
 
-/// Alignment abbreviations values.
-final alignmentAbbreviations = {"=": "center", "<": "left", ">": "right"};
+/// Textile abbreviations mapped with their values.
+final abbreviations = {
+  /* CSS styles */
+
+  "=": "center",
+  "<": "left",
+  ">": "right",
+
+  /* HTML Tags */
+  "pre": "pre",
+  "bc": "code",
+  "bq": "blockquote"
+};
 
 /// BlockParser.
 class BlockParser {
@@ -169,6 +185,12 @@ abstract class BlockSyntax {
           .trim()
           .replaceAll(RegExp(r'[^a-z0-9 _-]'), '')
           .replaceAll(RegExp(r'\s'), '-');
+
+  /// Generates valid style attribute with text-alignment in it.
+  static Map<String, String> _parseTextAlignment(String value) =>
+      value?.isNotEmpty ?? false
+          ? {"style": "text-align:${abbreviations[value]};"}
+          : {};
 }
 
 class EmptyBlockSyntax extends BlockSyntax {
@@ -188,11 +210,13 @@ class EmptyBlockSyntax extends BlockSyntax {
 class HeaderSyntax extends BlockSyntax {
   const HeaderSyntax();
 
+  /// The line starts with [h] following 1-6 and then alignment >, = or <
+  /// check for regex at https://regex101.com/r/EKmyTB/1
   @override
-  RegExp get pattern => _headerPattern;
+  RegExp get pattern => RegExp(r'^(h[1-6])([ ><=]?)\.(.*)');
 
   /// [Match] contains header type, optionally any one of
-  /// [alignmentAbbreviations], ending dot and text content.
+  /// [abbreviations], ending dot and text content.
   ///
   /// match[1] anyOneOf(h1...h6)
   /// match[2] anyOneOf(><=) or null
@@ -201,173 +225,83 @@ class HeaderSyntax extends BlockSyntax {
   Node parse(BlockParser parser) {
     var match = pattern.firstMatch(parser.current);
     parser.advance();
+    var tag = match[1];
+    var alignment = BlockSyntax._parseTextAlignment(match[2]);
     var contents = UnparsedContent(match[3].trim());
-    var alignment = _parseHeaderAlignment(match[2]);
-    return Element(match[1], [contents], alignment);
+    return Element(tag, [contents], alignment);
   }
-
-  Map<String, String> _parseHeaderAlignment(String value) => value == null
-      ? {}
-      : {"style": "text-align:${alignmentAbbreviations[value]};"};
 }
 
-/// Parses Paragraph blocks
-class ParagraphSyntax extends BlockSyntax {
-  static final _reflinkDefinitionStart = RegExp(r'[ ]{0,3}\[');
+class PreFormattedSyntax extends BlockSyntax {
+  const PreFormattedSyntax();
 
-  static final _whitespacePattern = RegExp(r'^\s*$');
-
+  /// The block starting for pre-formatted or code section.
   @override
-  RegExp get pattern => _paragraphPattern;
+  RegExp get pattern => RegExp(r'^(pre|bc)(\.{0,2}) (.*)');
 
+  /// It will be depending on parsing.
+  @override
+  bool get canEndBlock => false;
+
+  /// [Match] consist of three groups pre-formatted or code tag,
+  /// number of dots and one or more whitespace.
+  ///
+  /// match[1] anyOneOf(pre, bc)
+  /// match[2] . or ..
+  /// match[3] textContent or empty
+  ///
+  /// In case 3rd group is empty consider next line for parsing.
+  /// If 2nd group has double dots, consider next all consecutive lines
+  /// until new tag is found for parsing.
   @override
   Node parse(BlockParser parser) {
-    var childLines = <String>[];
+    var match = pattern.firstMatch(parser.current);
+    var tag = abbreviations[match[1]];
+    var dots = match[2].length;
+    var inlineContent = match[3];
 
-    // Eat until we hit something that ends a paragraph.
-    while (!BlockSyntax.isAtBlockEnd(parser)) {
-      childLines.add(parser.current);
+    String escaped;
+    if (dots > 1) {
+      var content = <String>[];
+      if (inlineContent?.isNotEmpty ?? false) {
+        content.add(inlineContent);
+      }
       parser.advance();
-    }
-
-    var paragraphLines = _extractReflinkDefinitions(parser, childLines);
-    if (paragraphLines == null) {
-      // Paragraph consisted solely of reference link definitions.
-      return Text('');
+      content.addAll(parseChildLines(parser));
+      escaped = escapeHtml(content.join("\n"));
     } else {
-      var contents = UnparsedContent(paragraphLines.join('\n'));
-      return Element.create('p', [contents]);
+      // find a non empty line for parsing
+      if (inlineContent?.isEmpty ?? true) {
+        while (!parser.isDone) {
+          parser.advance();
+          inlineContent = parser.current;
+          // break if content found in line
+          if (inlineContent?.isNotEmpty ?? false) break;
+        }
+      } else {
+        parser.advance();
+      }
+
+      escaped = escapeHtml(inlineContent);
     }
+    return tag == 'code'
+        ? Element.create('pre', [Element.text(tag, escaped)])
+        : Element.text(tag, escaped);
   }
 
-  /// Extract reference link definitions from the front of the paragraph, and
-  /// return the remaining paragraph lines.
-  List<String> _extractReflinkDefinitions(
-      BlockParser parser, List<String> lines) {
-    bool lineStartsReflinkDefinition(int i) =>
-        lines[i].startsWith(_reflinkDefinitionStart);
-
-    var i = 0;
-    loopOverDefinitions:
-    while (true) {
-      // Check for reflink definitions.
-      if (!lineStartsReflinkDefinition(i)) {
-        // It's paragraph content from here on out.
+  /// Parse children from current block until new block is found.
+  @override
+  List<String> parseChildLines(BlockParser parser) {
+    var childLines = <String>[];
+    while (!parser.isDone) {
+      var match = parser.matchesNext(_newBlockPattern);
+      if (!match) {
+        childLines.add(parser.current);
+        parser.advance();
+      } else {
         break;
       }
-      var contents = lines[i];
-      var j = i + 1;
-      while (j < lines.length) {
-        // Check to see if the _next_ line might start a new reflink definition.
-        // Even if it turns out not to be, but it started with a '[', then it
-        // is not a part of _this_ possible reflink definition.
-        if (lineStartsReflinkDefinition(j)) {
-          // Try to parse [contents] as a reflink definition.
-          if (_parseReflinkDefinition(parser, contents)) {
-            // Loop again, starting at the next possible reflink definition.
-            i = j;
-            continue loopOverDefinitions;
-          } else {
-            // Could not parse [contents] as a reflink definition.
-            break;
-          }
-        } else {
-          contents = contents + '\n' + lines[j];
-          j++;
-        }
-      }
-      // End of the block.
-      if (_parseReflinkDefinition(parser, contents)) {
-        i = j;
-        break;
-      }
-
-      // It may be that there is a reflink definition starting at [i], but it
-      // does not extend all the way to [j], such as:
-      //
-      //     [link]: url     // line i
-      //     "title"
-      //     garbage
-      //     [link2]: url   // line j
-      //
-      // In this case, [i, i+1] is a reflink definition, and the rest is
-      // paragraph content.
-      while (j >= i) {
-        // This isn't the most efficient loop, what with this big ole'
-        // Iterable allocation (`getRange`) followed by a big 'ole String
-        // allocation, but we
-        // must walk backwards, checking each range.
-        contents = lines.getRange(i, j).join('\n');
-        if (_parseReflinkDefinition(parser, contents)) {
-          // That is the last reflink definition. The rest is paragraph
-          // content.
-          i = j;
-          break;
-        }
-        j--;
-      }
-      // The ending was not a reflink definition at all. Just paragraph
-      // content.
-
-      break;
     }
-
-    if (i == lines.length) {
-      // No paragraph content.
-      return null;
-    } else {
-      // Ends with paragraph content.
-      return lines.sublist(i);
-    }
-  }
-
-  // Parse [contents] as a reference link definition.
-  //
-  // Also adds the reference link definition to the document.
-  //
-  // Returns whether [contents] could be parsed as a reference link definition.
-  bool _parseReflinkDefinition(BlockParser parser, String contents) {
-    var pattern = RegExp(
-        // Leading indentation.
-        r'''^[ ]{0,3}'''
-        // Reference id in brackets, and URL.
-        r'''\[((?:\\\]|[^\]])+)\]:\s*(?:<(\S+)>|(\S+))\s*'''
-        // Title in double or single quotes, or parens.
-        r'''("[^"]+"|'[^']+'|\([^)]+\)|)\s*$''',
-        multiLine: true);
-    var match = pattern.firstMatch(contents);
-    if (match == null) {
-      // Not a reference link definition.
-      return false;
-    }
-    if (match[0].length < contents.length) {
-      // Trailing text. No good.
-      return false;
-    }
-
-    var label = match[1];
-    var destination = match[2] ?? match[3];
-    var title = match[4];
-
-    // The label must contain at least one non-whitespace character.
-    if (_whitespacePattern.hasMatch(label)) {
-      return false;
-    }
-
-    if (title == '') {
-      // No title.
-      title = null;
-    } else {
-      // Remove "", '', or ().
-      title = title.substring(1, title.length - 1);
-    }
-
-    // References are case-insensitive, and internal whitespace is compressed.
-    label =
-        label.toLowerCase().trim().replaceAll(_oneOrMoreWhitespacePattern, ' ');
-
-    parser.document.linkReferences
-        .putIfAbsent(label, () => LinkReference(label, destination, title));
-    return true;
+    return childLines;
   }
 }
