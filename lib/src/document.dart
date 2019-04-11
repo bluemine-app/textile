@@ -28,6 +28,7 @@ class Document {
   final _inlineSyntaxes = Set<InlineSyntax>();
 
   Iterable<BlockSyntax> get blockSyntaxes => _blockSyntaxes;
+
   Iterable<InlineSyntax> get inlineSyntaxes => _inlineSyntaxes;
 
   Document(
@@ -51,15 +52,16 @@ class Document {
   }
 
   void _parseInlineContent(List<Node> nodes) {
-    for (var i = 0; i < nodes.length; i++) {
+    for (var i = 0, size = nodes.length; i < size; i++) {
       var node = nodes[i];
       if (node is UnparsedContent) {
-        var inlineNodes = parseInline(node.textContent);
+        nodes.insert(i, Text(node.textContent));
+        /*var inlineNodes = parseInline(node.textContent);
         if (inlineNodes != null) {
           nodes.removeAt(i);
           nodes.insertAll(i, inlineNodes);
           i += inlineNodes.length - 1;
-        }
+        }*/
       } else if (node is Element && node.children != null) {
         _parseInlineContent(node.children);
       }
@@ -67,8 +69,7 @@ class Document {
   }
 }
 
-/// A [link reference
-/// definition](http://spec.commonmark.org/0.28/#link-reference-definitions).
+/// A [link reference definition](https://textile-lang.com/doc/links).
 class LinkReference {
   /// The [link label](http://spec.commonmark.org/0.28/#link-label).
   ///

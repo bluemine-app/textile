@@ -19,35 +19,18 @@ import 'dart:io';
 import 'package:test/test.dart';
 import 'package:textile/textile.dart';
 
-import 'parse_results.dart';
-
-List<String> read(String path) => File(path).readAsLinesSync();
+String read(String path) => File(path).readAsStringSync();
 
 void main() {
-  group('BlockSyntax', () {
-    test('Test HeaderSyntax', () {
-      var document = Document();
-      var nodes = document.parseLines(read("test/units/block_paragraph.unit"));
-      var contents =
-          nodes.map((node) => node.textContent).toList(growable: false);
-      expect(contents, containsAllInOrder(headers));
+  group('Html Renderer', () {
+    test('Test block_paragraph', () {
+      var html = textileToHtml(read("test/units/block_paragraph.unit"));
+      print(html);
     });
 
-    test('Test PreFormattedSyntax', () {
-      var document = Document();
-      var nodes = document.parseLines(read("test/units/code_paragraph.unit"));
-      var contents =
-          nodes.map((node) => node.textContent).toList(growable: false);
-      expect(contents, containsAllInOrder(codeBlocks));
-    });
-
-    test('Test All BlockSyntax', () {
-      var document = Document();
-      var nodes = document.parseLines(read("test/units/code_paragraph.unit"));
-      var contents =
-          nodes.map((node) => node.textContent).toList(growable: false);
-      print(contents.join('\n'));
-      expect(contents, containsAllInOrder(codeBlocks));
+    test('Test code_paragraph', () {
+      var html = textileToHtml(read("test/units/code_paragraph.unit"));
+      print(html);
     });
   });
 }

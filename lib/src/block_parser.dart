@@ -29,10 +29,10 @@ final _emptyPattern = RegExp(r'^(?:[ \t]*)$');
 /// One or more whitespace, for compressing.
 // final _oneOrMoreWhitespacePattern = RegExp('[ \n\r\t]+');
 
-/// Find if line is new block
-/// check for regex at https://regex101.com/r/BwoJnd/1
+/// Find if line is starts a new block.
+/// check for regex at https://regex101.com/r/BwoJnd/3
 final _newBlockPattern =
-    RegExp(r'(^p|^h[1-6]|^notextile|^bq|^bc|^pre|^fn\d+)(\. )');
+    RegExp(r'(^p(?:re)?|^h[1-6]|^b[qc]|^fn\d+|^notextile)\.{1,2} ');
 
 /// The line are starts with 'p. ' or by any character
 /// but not starting with whitespace.
@@ -80,7 +80,8 @@ class BlockParser {
   final List<BlockSyntax> standardBlockSyntaxes = [
     const EmptyBlockSyntax(),
     const HeaderSyntax(),
-    const PreFormattedSyntax()
+    const PreFormattedSyntax(),
+    const ParagraphSyntax()
   ];
 
   BlockParser(this.lines, this.document) {
@@ -305,15 +306,36 @@ class PreFormattedSyntax extends BlockSyntax {
   @override
   List<String> parseChildLines(BlockParser parser) {
     var childLines = <String>[];
-    while (!parser.isDone) {
-      var match = parser.matchesNext(_newBlockPattern);
-      if (!match) {
-        childLines.add(parser.current);
-        parser.advance();
-      } else {
-        break;
-      }
+    while (!parser.isDone && !parser.matches(_newBlockPattern)) {
+      childLines.add(parser.current);
+      parser.advance();
     }
     return childLines;
+  }
+}
+
+/// Parse paragraph content from document.
+class ParagraphSyntax extends BlockSyntax {
+  const ParagraphSyntax();
+
+  @override
+  bool get canEndBlock => false;
+
+  @override
+  bool canParse(BlockParser parser) => true;
+
+  @override
+  Node parse(BlockParser parser) {
+    var childLines = <String>[];
+
+    while (!BlockSyntax.isAtBlockEnd(parser)) {
+      childLines.add(parser.current);
+      parser.advance();
+    }
+
+    //TODO: parse link references while doing task #36
+
+    var contents = UnparsedContent(childLines.join('\n'));
+    return Element.create('p', [contents]);
   }
 }

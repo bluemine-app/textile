@@ -9,6 +9,7 @@ h2. Download
 To include @ShimmerRecyclerView@ in your project, add the following to your dependencies:
 
 *app/build.gradle*
+
 bc.. 
 dependencies {
     implementation 'com.todkars:shimmer-recyclerview:{latest-version}'
@@ -29,7 +30,7 @@ bc..
 
 h4. Activity
 
-bc..
+bc.. 
 public class MainActivity extends Activity {
 
     private ShimmerRecyclerView mShimmerRecyclerView;
