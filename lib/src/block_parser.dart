@@ -44,14 +44,14 @@ final _newBlockPattern =
 /// Textile abbreviations mapped with their values.
 final abbreviations = {
   /* CSS styles */
-  "=": "center",
-  "<": "left",
-  ">": "right",
+  '=': 'center',
+  '<': 'left',
+  '>': 'right',
 
   /* HTML Tags */
-  "pre": "pre",
-  "bc": "code",
-  "bq": "blockquote"
+  'pre': 'pre',
+  'bc': 'code',
+  'bq': 'blockquote'
 };
 
 /// BlockParser to parse series of lines into blocks of Textile suitable
@@ -198,7 +198,7 @@ abstract class BlockSyntax {
   /// Generates valid style attribute with text-alignment in it.
   static Map<String, String> _parseTextAlignment(String value) =>
       value?.isNotEmpty ?? false
-          ? {"style": "text-align:${abbreviations[value]};"}
+          ? {'style': 'text-align:${abbreviations[value]};'}
           : {};
 }
 
@@ -221,7 +221,7 @@ class EmptyBlockSyntax extends BlockSyntax {
 class HeaderSyntax extends BlockSyntax {
   const HeaderSyntax();
 
-  /// The line starts with [h] following 1-6 and then alignment >, = or <
+  /// The line starts with 'h' following 1-6 and then alignment >, = or <
   /// check for regex at https://regex101.com/r/EKmyTB/1
   @override
   RegExp get pattern => RegExp(r'^(h[1-6])([ ><=]?)\.(.*)');
@@ -238,7 +238,7 @@ class HeaderSyntax extends BlockSyntax {
     parser.advance();
     var tag = match[1];
     var alignment = BlockSyntax._parseTextAlignment(match[2]);
-    var contents = UnparsedContent(match[3].trim());
+    var contents = RawContent(match[3].trim());
     return Element(tag, [contents], alignment);
   }
 }
@@ -281,7 +281,7 @@ class PreFormattedSyntax extends BlockSyntax {
       }
       parser.advance();
       content.addAll(parseChildLines(parser));
-      escaped = escapeHtml(content.join("\n"));
+      escaped = escapeHtml(content.join('\n'));
     } else {
       // find a non empty line for parsing
       if (inlineContent?.isEmpty ?? true) {
@@ -335,7 +335,7 @@ class ParagraphSyntax extends BlockSyntax {
 
     //TODO: parse link references while doing task #36
 
-    var contents = UnparsedContent(childLines.join('\n'));
+    var contents = RawContent(childLines.join('\n'));
     return Element.create('p', [contents]);
   }
 }

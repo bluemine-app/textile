@@ -24,12 +24,12 @@ String read(String path) => File(path).readAsStringSync();
 void main() {
   group('Html Renderer', () {
     test('Test block_paragraph', () {
-      var html = textileToHtml(read("test/units/block_paragraph.unit"));
+      var html = textileToHtml(read('test/units/block_paragraph.unit'));
       print(html);
     });
 
     test('Test code_paragraph', () {
-      var html = textileToHtml(read("test/units/code_paragraph.unit"));
+      var html = textileToHtml(read('test/units/code_paragraph.unit'));
       print(html);
     });
   });

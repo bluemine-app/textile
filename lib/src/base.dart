@@ -58,6 +58,7 @@ class Element implements Node {
   /// Whether this element is self-closing.
   bool get isEmpty => children == null;
 
+  @override
   void accept(NodeVisitor visitor) {
     if (visitor.visitElementBefore(this)) {
       if (children != null) {
@@ -67,6 +68,7 @@ class Element implements Node {
     }
   }
 
+  @override
   String get textContent => children == null
       ? ''
       : children.map((Node child) => child.textContent).join('');
@@ -78,8 +80,10 @@ class Text implements Node {
 
   Text(this.text);
 
+  @override
   void accept(NodeVisitor visitor) => visitor.visitText(this);
 
+  @override
   String get textContent => text;
 }
 
@@ -89,18 +93,21 @@ class Text implements Node {
 /// These placeholder nodes should only remain in place while the block nodes
 /// of a document are still being parsed, in order to gather all reference link
 /// definitions.
-class UnparsedContent implements Node {
+class RawContent implements Node {
+  @override
   final String textContent;
 
-  UnparsedContent(this.textContent);
+  RawContent(this.textContent);
 
+  @override
   void accept(NodeVisitor visitor) => null;
 }
 
 /// Visitor pattern for the AST.
 ///
-/// Renderers or other AST transformers should implement this.
+/// Renderer or other AST transformers should implement this.
 abstract class NodeVisitor {
+  
   /// Called when a Text node has been reached.
   void visitText(Text text);
 

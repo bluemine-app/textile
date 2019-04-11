@@ -54,7 +54,7 @@ class Document {
   void _parseInlineContent(List<Node> nodes) {
     for (var i = 0, size = nodes.length; i < size; i++) {
       var node = nodes[i];
-      if (node is UnparsedContent) {
+      if (node is RawContent) {
         nodes.insert(i, Text(node.textContent));
         /*var inlineNodes = parseInline(node.textContent);
         if (inlineNodes != null) {

@@ -19,11 +19,11 @@ import 'base.dart';
 import 'document.dart';
 
 class InlineParser {
-  static final List<InlineSyntax> _defaultSyntaxes =
-      List<InlineSyntax>.unmodifiable(<InlineSyntax>[]);
+  /*static final List<InlineSyntax> _defaultSyntaxes =
+  List<InlineSyntax>.unmodifiable(<InlineSyntax>[]);*/
 
-  static final List<InlineSyntax> _htmlSyntaxes =
-      List<InlineSyntax>.unmodifiable(<InlineSyntax>[]);
+  /*static final List<InlineSyntax> _htmlSyntaxes =
+      List<InlineSyntax>.unmodifiable(<InlineSyntax>[]);*/
 
   /// The string of Markdown being parsed.
   final String source;
@@ -44,7 +44,7 @@ class InlineParser {
   InlineParser(this.source, this.document) : _stack = <TagState>[];
 
   List<Node> parse() {
-    // empty
+    return /* empty until implemented */ [];
   }
 
   int charAt(int index) => source.codeUnitAt(index);
@@ -128,6 +128,7 @@ class TagSyntax extends InlineSyntax {
       : endPattern = RegExp((end != null) ? end : pattern, multiLine: true),
         super(pattern);
 
+  @override
   bool onMatch(InlineParser parser, Match match) {
     return true;
   }
