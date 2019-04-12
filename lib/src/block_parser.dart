@@ -95,6 +95,9 @@ class BlockParser {
     /* Textile Header lines */
     const HeaderSyntax(),
 
+    /* no Textile lines */
+    const NoTextileBlockSyntax(),
+
     /* Pre or Code block lines */
     const PreFormattedSyntax(),
 
@@ -358,6 +361,37 @@ class ParagraphSyntax extends BlockSyntax {
     return Element.create('p', [contents]);
   }
 }
+
+class NoTextileBlockSyntax extends BlockSyntax {
+  const NoTextileBlockSyntax();
+
+  /// The line starting with 'notextile' must be ignore in parsing.
+  /// check it at https://regex101.com/r/iiCQun/2
+  @override
+  RegExp get pattern => RegExp(r'^notextile\.\s(.*)$', multiLine: true);
+
+  @override
+  bool get canEndBlock => true;
+
+  @override
+  Node parse(BlockParser parser) {
+    var lines = <String>[];
+    var match = pattern.firstMatch(parser.current);
+
+    var content = match[1];
+    // consume first line if content is not empty.
+    if (content?.isNotEmpty ?? false) {
+      lines.add(content);
+    }
+
+    parser.advance(); // then, consumer until meet blank line.
+    while (!parser.isDone && !parser.matches(_emptyPattern)) {
+      lines.add(parser.current);
+      parser.advance();
+    }
+    return Text(lines.join('\n'));
+  }
+}
 //endregion
 
 //region Html BlockSyntax
@@ -415,7 +449,7 @@ class BlockTagBlockHtmlSyntax extends BlockHtmlSyntax {
   Node parse(BlockParser parser) {
     var childLines = <String>[];
 
-    // Eat until we hit a blank line.
+    // till next blank line.
     while (!parser.isDone && !parser.matches(_emptyPattern)) {
       childLines.add(parser.current);
       parser.advance();
@@ -445,4 +479,3 @@ class OtherTagBlockHtmlSyntax extends BlockTagBlockHtmlSyntax {
   const OtherTagBlockHtmlSyntax();
 }
 //endregion
-
