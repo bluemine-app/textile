@@ -23,14 +23,30 @@ String read(String path) => File(path).readAsStringSync();
 
 void main() {
   group('Html Renderer', () {
-    test('Test block_paragraph', () {
+    test('Test block_paragraph', () async {
       var html = textileToHtml(read('test/units/block_paragraph.unit'));
-      print(html);
+      var logFile = File('test/results/block_paragraph.html');
+      var sink = logFile.openWrite();
+      sink.write(html);
+      await sink.flush();
+      await sink.close();
+
+      // after finishing job print it.
+      print('wrote to file: ${logFile.path}\n\n');
+      print('$html\n');
     });
 
-    test('Test code_paragraph', () {
+    test('Test code_paragraph', () async {
       var html = textileToHtml(read('test/units/code_paragraph.unit'));
-      print(html);
+      var logFile = File('test/results/code_paragraph.html');
+      var sink = logFile.openWrite();
+      sink.write(html);
+      await sink.flush();
+      await sink.close();
+
+      // after finishing job print it.
+      print('wrote to file: ${logFile.path}\n\n');
+      print('$html\n');
     });
   });
 }

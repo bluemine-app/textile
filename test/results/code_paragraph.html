@@ -1,39 +1,25 @@
-h1. ShimmerRecyclerView
-
-ShimmerRecyclerView is an custom RecyclerView library based on Facebook's "Shimmer":https://github.com/facebook/shimmer-android effect for Android library and inspired from "Sharish's ShimmerRecyclerView":https://github.com/sharish/ShimmerRecyclerView.
-
-There is reason behind creating a separate library for ShimmerRecyclerView, most of libraries doesn't not support runtime switching of `LayoutManager` or shimmer `layout` resources. Secondly the other similar library is build upon "Supercharge's ShimmerLayout":https://github.com/team-supercharge/ShimmerLayout which is I feel very less active in terms of release. So I came up with an alternative.
-
-h2. Download
-
-To include @ShimmerRecyclerView@ in your project, add the following to your dependencies:
-
-*app/build.gradle*
-
-bc.. 
-dependencies {
+<h1>ShimmerRecyclerView</h1>
+<p>ShimmerRecyclerView is an custom RecyclerView library based on Facebook's "Shimmer":https://github.com/facebook/shimmer-android effect for Android library and inspired from "Sharish's ShimmerRecyclerView":https://github.com/sharish/ShimmerRecyclerView.</p>
+<p>There is reason behind creating a separate library for ShimmerRecyclerView, most of libraries doesn't not support runtime switching of `LayoutManager` or shimmer `layout` resources. Secondly the other similar library is build upon "Supercharge's ShimmerLayout":https://github.com/team-supercharge/ShimmerLayout which is I feel very less active in terms of release. So I came up with an alternative.</p>
+<h2>Download</h2>
+<p>To include @ShimmerRecyclerView@ in your project, add the following to your dependencies:</p>
+<p>*app/build.gradle*</p>
+<pre><code>dependencies {
     implementation 'com.todkars:shimmer-recyclerview:{latest-version}'
 }
-
-h2. Usage
-The following snippet shows how you can use Shimmer RecyclerView in your project.
-
-h4. Layout
-
-<!--- This comment should appear as it is in HTML -->
-
-bc.. 
-<com.todkars.shimmer.ShimmerRecyclerView
+</code></pre>
+<h2>Usage</h2>
+<p>The following snippet shows how you can use Shimmer RecyclerView in your project.</p>
+<h4>Layout</h4><!--- This comment should appear as it is in HTML -->
+<pre><code>&lt;com.todkars.shimmer.ShimmerRecyclerView
     android:id="@+id/shimmer_recycler_view"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     app:shimmer_recycler_colored="true"
-    app:shimmer_recycler_duration="1000" />
-
-h4. Activity
-
-bc.. 
-public class MainActivity extends Activity {
+    app:shimmer_recycler_duration="1000" /&gt;
+</code></pre>
+<h4>Activity</h4>
+<pre><code>public class MainActivity extends Activity {
 
     private ShimmerRecyclerView mShimmerRecyclerView;
 
@@ -54,17 +40,15 @@ public class MainActivity extends Activity {
         mShimmerRecyclerView.showShimmer();     // to start showing shimmer
 
         // To stimulate long running work using android.os.Handler
-        mHandler.postDelayed((Runnable) () -> {
+        mHandler.postDelayed((Runnable) () -&gt; {
             mShimmerRecyclerView.hideShimmer(); // to hide shimmer
         }, 3000);
     }
 }
-
-h2. Attributes
-
-All attributes used for *ShimmerRecyclerView* are same as Facebook's *_ShimmerFrameLayout_* below is detail table:
-
-| Name | Attribute |  Description |
+</code></pre>
+<h2>Attributes</h2>
+<p>All attributes used for *ShimmerRecyclerView* are same as Facebook's *_ShimmerFrameLayout_* below is detail table:</p>
+<p>| Name | Attribute |  Description |
 |---|---|---|
 | Clip to Children | `shimmer_recycler_clip_to_children` | Whether to clip the shimmering effect to the children, or to opaquely draw the shimmer on top of the children. Use this if your overall layout contains transparency. |
 | Colored | `shimmer_recycler_colored` | Whether you want the shimmer to affect just the alpha or draw colors on-top of the children. |
@@ -83,12 +67,9 @@ All attributes used for *ShimmerRecyclerView* are same as Facebook's *_ShimmerFr
 | Shape | `shimmer_recycler_shape` | Shape of the highlight mask, either with a linear or a circular gradient. |
 | Tilt | `shimmer_recycler_tilt` | Angle at which the highlight is tilted, measured in degrees. |
 | Fixed Width or Height | `shimmer_recycler_fixed_width` or `shimmer_recycler_fixed_height` | Fixed sized highlight mask, if set, overrides the relative size value. |
-| Width or Height Ratio | `shimmer_recycler_width_ratio` or `shimmer_recycler_height_ratio` | Size of the highlight mask, relative to the layout it is applied to. |
-
-h2. "LICENSE":https://github.com/omtodkar/ShimmerRecyclerView/blob/master/LICENSE.md
-
-pre.. 
-ShimmerRecyclerView a custom RecyclerView library
+| Width or Height Ratio | `shimmer_recycler_width_ratio` or `shimmer_recycler_height_ratio` | Size of the highlight mask, relative to the layout it is applied to. |</p>
+<h2>"LICENSE":https://github.com/omtodkar/ShimmerRecyclerView/blob/master/LICENSE.md</h2>
+<pre>ShimmerRecyclerView a custom RecyclerView library
 Copyright (C) 2019  Omkar Todkar
 
 This program is free software: you can redistribute it and/or modify
@@ -103,3 +84,4 @@ GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see https://www.gnu.org/licenses/gpl.txt
+</pre>

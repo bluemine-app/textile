@@ -78,9 +78,27 @@ class BlockParser {
 
   /// All standard [BlockSyntax] to be parsed
   final List<BlockSyntax> standardBlockSyntaxes = [
+    /* Blank lines */
     const EmptyBlockSyntax(),
+
+    /* Html lines  */
+    const BlockTagBlockHtmlSyntax(),
+    LongBlockHtmlSyntax(r'^ {0,3}<pre(?:\s|>|$)', '</pre>'),
+    LongBlockHtmlSyntax(r'^ {0,3}<script(?:\s|>|$)', '</script>'),
+    LongBlockHtmlSyntax(r'^ {0,3}<style(?:\s|>|$)', '</style>'),
+    LongBlockHtmlSyntax('^ {0,3}<!--', '-->'),
+    LongBlockHtmlSyntax('^ {0,3}<\\?', '\\?>'),
+    LongBlockHtmlSyntax('^ {0,3}<![A-Z]', '>'),
+    LongBlockHtmlSyntax('^ {0,3}<!\\[CDATA\\[', '\\]\\]>'),
+    const OtherTagBlockHtmlSyntax(),
+
+    /* Textile Header lines */
     const HeaderSyntax(),
+
+    /* Pre or Code block lines */
     const PreFormattedSyntax(),
+
+    /* Paragraph block lines */
     const ParagraphSyntax()
   ];
 
@@ -243,6 +261,7 @@ class HeaderSyntax extends BlockSyntax {
   }
 }
 
+//region Paragraph BlockSyntax
 /// Parse Code Blocks and Pre-formatted content in document.
 class PreFormattedSyntax extends BlockSyntax {
   const PreFormattedSyntax();
@@ -339,3 +358,91 @@ class ParagraphSyntax extends BlockSyntax {
     return Element.create('p', [contents]);
   }
 }
+//endregion
+
+//region Html BlockSyntax
+/// Html Block Syntax
+abstract class BlockHtmlSyntax extends BlockSyntax {
+  const BlockHtmlSyntax();
+
+  @override
+  bool get canEndBlock => true;
+}
+
+/// Parse long Html block syntax in document.
+class LongBlockHtmlSyntax extends BlockHtmlSyntax {
+  @override
+  final RegExp pattern;
+
+  final RegExp _endPattern;
+
+  LongBlockHtmlSyntax(String pattern, String endPattern)
+      : pattern = RegExp(pattern),
+        _endPattern = RegExp(endPattern);
+
+  @override
+  Node parse(BlockParser parser) {
+    var lines = <String>[];
+
+    while (!parser.isDone) {
+      lines.add(parser.current);
+      if (parser.matches(_endPattern)) break;
+      parser.advance();
+    }
+
+    parser.advance();
+    return Text(lines.join('\n'));
+  }
+}
+
+/// Parse all known raw HTML from the document.
+class BlockTagBlockHtmlSyntax extends BlockHtmlSyntax {
+  static final _pattern = RegExp(
+      r'^ {0,3}</?(?:address|article|aside|base|basefont|blockquote|body|'
+      r'caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|'
+      r'figcaption|figure|footer|form|frame|frameset|h1|head|header|hr|html|'
+      r'iframe|legend|li|link|main|menu|menuitem|meta|nav|noframes|ol|optgroup|'
+      r'option|p|param|section|source|summary|table|tbody|td|tfoot|th|thead|'
+      'title|tr|track|ul)'
+      r'(?:\s|>|/>|$)');
+
+  @override
+  RegExp get pattern => _pattern;
+
+  const BlockTagBlockHtmlSyntax();
+
+  @override
+  Node parse(BlockParser parser) {
+    var childLines = <String>[];
+
+    // Eat until we hit a blank line.
+    while (!parser.isDone && !parser.matches(_emptyPattern)) {
+      childLines.add(parser.current);
+      parser.advance();
+    }
+
+    return Text(childLines.join('\n'));
+  }
+}
+
+/// Parse any random HTML tag from document.
+class OtherTagBlockHtmlSyntax extends BlockTagBlockHtmlSyntax {
+  @override
+  bool get canEndBlock => false;
+
+  // Really hacky way to detect "other" HTML. This matches:
+  //
+  // * any opening spaces
+  // * open bracket and maybe a slash ("<" or "</")
+  // * some word characters
+  // * either:
+  //   * a close bracket, or
+  //   * whitespace followed by not-brackets followed by a close bracket
+  // * possible whitespace and the end of the line.
+  @override
+  RegExp get pattern => RegExp(r'^ {0,3}</?\w+(?:>|\s+[^>]*>)\s*$');
+
+  const OtherTagBlockHtmlSyntax();
+}
+//endregion
+

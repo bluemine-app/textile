@@ -32,6 +32,20 @@ Issues can be assigned one of the five priority levels:
 
 h2. Describing the Issue
 
+<div id="shopping-cart">
+
+<form action="#" method="get">
+
+h3{margin-top:0}. Your cart
+
+* Item one
+* Item two
+
+<input type="submit" value="Check Out" />
+</form>
+
+</div>
+
 h3. Issue Description
 
 The "Description" field should contain the following information:

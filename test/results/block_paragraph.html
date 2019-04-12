@@ -1,0 +1,41 @@
+<h1>Art of Trackers</h1>
+<p>This document explains how to describe issues in a way that makes it easier for developers to understand and reproduce issues, and how to test code fixes.</p>
+<p>Once you are logged in[1], follow these steps:</p>
+<p>* Find out if the issue you encountered has been reported before:
+** If the issue has been reported before and the issue is still open, you can add a description of how you encountered the bug (see guidelines under "Describing the issue", below);
+** If the issue was reported in the past and closed, you can reopen it and describe how you encountered the issue. (Alternatively, it is possible to create a new bug and link the old one with the new one.)
+* If the issue is new, you can report[2] it by using the "New Issue":/projects/open-bluemine/issues/new from drop down menu in top left "+" button.</p>
+<h2>Types of Trackers</h2>
+<p>The Redmine <b>setup</b> used by Bluemine distinguishes between several types of issues. The most important ones are:</p>
+<p>|_. Tracker |_. Roadmap Visibility |_. Description |
+|=. Milestone |=. Yes | Possible minor releases and can be referenced as parent of features[3]. |
+|=. Feature |=. Yes | Improvements to existing functionality or functionality that is not available yet. |
+|=. Task |=. No | Can be used for commits, sub trackers of Feature and Milestone. |
+|=. Bug |=. No | Defects in any functionality. |</p>
+<h2>Priority levels</h2>
+<p>Issues can be assigned one of the five priority levels:</p>
+<p>|_. Priority |_. Description |
+|=. Normal | Default |
+|=. Low | Minor loss of function. |
+|=. High | Major loss of function. |
+|=. Urgent | Blocker issue; this issue must be fixed before the next release (or the user tests). |
+|=. Immediate | e.g. application crash, loss of data. |</p>
+<h2>Describing the Issue</h2><div id="shopping-cart"><form action="#" method="get">
+<p>h3{margin-top:0}. Your cart</p>
+<p>* Item one
+* Item two</p><input type="submit" value="Check Out" />
+</form></div>
+<h3>Issue Description</h3>
+<p>The "Description" field should contain the following information:</p>
+<p>* A summary of the issue;
+* A section that explains how a developer can reproduce the issue, as a series of steps, and what output should be observed;
+* A section that describes the desired behaviour;
+* Current workarounds or mitigation methods (if applicable).</p>
+<p>Use heading level 4 for each of these sections. You can do this in JIRA by putting h4. in front of the heading text.</p>
+<p>For complex issues, see the section on relationships between issues.</p>
+<h3>Component and Assignee</h3>
+<p>Identify the component (or components) to which the ticket applies. Each component has a "Lead" (see for example the list of GPII components) who is also the default assignee. You should always assign the ticket to the most appropriate team member, but if you do not know who to pick, the system will take the default assignee. If necessary, this person can re-assign the ticket to somebody else.</p>
+<p>You can also define the relevant component(s) after creating the ticket; see the "Details" section on the ticket's page.</p>
+<p>fn1. https://www.drupal.org/issue-queue/how-to
+fn2. https://grammar.yourdictionary.com/for-students-and-parents/tips-on-writing-a-problem-statement.html
+fn3. https://wiki.gpii.net/w/How_to_Write_a_Good_Bug_Report</p>
