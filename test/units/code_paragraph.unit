@@ -111,6 +111,13 @@ All attributes used for *ShimmerRecyclerView* are same as Facebook's *_ShimmerFr
 
 h2. "LICENSE":https://github.com/omtodkar/ShimmerRecyclerView/blob/master/LICENSE.md
 
+###.. ////////////////////////////
+// This multi-line comment
+// will keep going and going
+
+// even if you put blank lines in.
+//////////////////////////////////
+
 pre.. 
 ShimmerRecyclerView a custom RecyclerView library
 Copyright (C) 2019  Omkar Todkar

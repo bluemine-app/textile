@@ -32,7 +32,7 @@ final _emptyPattern = RegExp(r'^(?:[ \t]*)$');
 /// Find if line is starts a new block.
 /// check for regex [here](https://regex101.com/r/BwoJnd/5)
 final _newBlockPattern =
-    RegExp(r'(^p(?:re)?|^h[1-6]|^b[qc]|^fn\d+|^notextile)\.{1,2}\:?\s');
+    RegExp(r'(^p(?:re)?|^#{3}|^h[1-6]|^b[qc]|^fn\d+|^notextile)\.{1,2}\:?\s');
 //endregion
 
 /// Textile abbreviations mapped with their values.
@@ -75,7 +75,7 @@ class BlockParser {
     /* Blank lines */
     const EmptyBlockSyntax(),
 
-    /* Textile Comments */
+    /* Textile Comments lines */
     const CommentBlockSyntax(),
 
     /* Html lines  */
@@ -241,18 +241,26 @@ class EmptyBlockSyntax extends BlockSyntax {
 class CommentBlockSyntax extends BlockSyntax {
   const CommentBlockSyntax();
 
-  /// Find custom comment line start with 3 hash '#'.
+  /// Find textile comment line starts with 3 hash '#' followed by dots.
   ///
-  /// check for regex [here](https://regex101.com/r/3ZEDqt/1)
+  /// check for regex [here](https://regex101.com/r/3ZEDqt/2)
   @override
-  RegExp get pattern => RegExp(r'^#{3}\. (.*)$');
+  RegExp get pattern => RegExp(r'^#{3}(\.{1,2}) ');
 
   @override
   Node parse(BlockParser parser) {
-    // ignore all consecutive lines until blank line is encountered.
+    var match = pattern.firstMatch(parser.current);
+    var dots = match[1].length;
+
+    // ignore all consecutive lines.
     while (!parser.isDone) {
       parser.advance();
-      if (parser.matches(_emptyPattern)) break;
+
+      // if single line comment, check for next blank line.
+      if (dots == 1 && parser.matches(_emptyPattern)) break;
+
+      // if multi line comment, check for next new block.
+      if (dots == 2 && parser.matches(_newBlockPattern)) break;
     }
     return null;
   }
