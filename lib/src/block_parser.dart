@@ -75,6 +75,9 @@ class BlockParser {
     /* Blank lines */
     const EmptyBlockSyntax(),
 
+    /* Textile Comments */
+    const CommentBlockSyntax(),
+
     /* Html lines  */
     const BlockTagBlockHtmlSyntax(),
     LongBlockHtmlSyntax(r'^ {0,3}<pre(?:\s|>|$)', '</pre>'),
@@ -234,14 +237,35 @@ class EmptyBlockSyntax extends BlockSyntax {
   }
 }
 
+/// Parse comment section in document.
+class CommentBlockSyntax extends BlockSyntax {
+  const CommentBlockSyntax();
+
+  /// Find custom comment line start with 3 hash '#'.
+  ///
+  /// check for regex [here](https://regex101.com/r/3ZEDqt/1)
+  @override
+  RegExp get pattern => RegExp(r'^#{3}\. (.*)$');
+
+  @override
+  Node parse(BlockParser parser) {
+    // ignore all consecutive lines until blank line is encountered.
+    while (!parser.isDone) {
+      parser.advance();
+      if (parser.matches(_emptyPattern)) break;
+    }
+    return null;
+  }
+}
+
 /// Parse headers in document.
 class HeaderSyntax extends BlockSyntax {
   const HeaderSyntax();
 
   /// The line starts with 'h' following 1-6 and then alignment >, = or <
-  /// check for regex at https://regex101.com/r/EKmyTB/1
+  /// check for regex [here](https://regex101.com/r/EKmyTB/2)
   @override
-  RegExp get pattern => RegExp(r'^(h[1-6])([ ><=]?)\.(.*)');
+  RegExp get pattern => RegExp(r'^(h[1-6])([><=]?)\.\s(.*)');
 
   /// [Match] contains header type, optionally any one of
   /// [abbreviations], ending dot and text content.

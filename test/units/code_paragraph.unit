@@ -32,6 +32,9 @@ bc..
 
 h4. Activity
 
+###. This is a textile comment block.
+It will be removed from your document.
+
 bc.. 
 public class MainActivity extends Activity {
 
