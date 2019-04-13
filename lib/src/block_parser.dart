@@ -21,24 +21,18 @@ import 'base.dart';
 import 'document.dart';
 import 'util.dart';
 
-//region Common Expressions
+//region RegExp
 /// The line contains only whitespace or is empty.
-/// check for regex at https://regex101.com/r/iF9lHI/1
+/// check for regex [here](https://regex101.com/r/iF9lHI/1)
 final _emptyPattern = RegExp(r'^(?:[ \t]*)$');
 
 /// One or more whitespace, for compressing.
 // final _oneOrMoreWhitespacePattern = RegExp('[ \n\r\t]+');
 
 /// Find if line is starts a new block.
-/// check for regex at https://regex101.com/r/BwoJnd/3
+/// check for regex [here](https://regex101.com/r/BwoJnd/5)
 final _newBlockPattern =
-    RegExp(r'(^p(?:re)?|^h[1-6]|^b[qc]|^fn\d+|^notextile)\.{1,2} ');
-
-/// The line are starts with 'p. ' or by any character
-/// but not starting with whitespace.
-/// check for regex at https://regex101.com/r/Pv37oS/1
-/*final _paragraphPattern =
-    RegExp(r'^([^\s][p\.]\s)(.*)|^[^\s].*$', multiLine: true);*/
+    RegExp(r'(^p(?:re)?|^h[1-6]|^b[qc]|^fn\d+|^notextile)\.{1,2}\:?\s');
 //endregion
 
 /// Textile abbreviations mapped with their values.
@@ -100,6 +94,9 @@ class BlockParser {
 
     /* Pre or Code block lines */
     const PreFormattedSyntax(),
+
+    /*  Block Quotation block lines */
+    const BlockQuotationSyntax(),
 
     /* Paragraph block lines */
     const ParagraphSyntax()
@@ -173,7 +170,6 @@ class BlockParser {
   }
 }
 
-/// Abstract block syntax for textile extending [BlockSyntax].
 abstract class BlockSyntax {
   const BlockSyntax();
 
@@ -271,7 +267,7 @@ class PreFormattedSyntax extends BlockSyntax {
 
   /// The block starting for pre-formatted or code section.
   @override
-  RegExp get pattern => RegExp(r'^(pre|bc)(\.{0,2}) (.*)');
+  RegExp get pattern => RegExp(r'^(pre|bc)(\.{0,2}) (.*)$');
 
   /// It will be depending on parsing.
   @override
@@ -290,6 +286,7 @@ class PreFormattedSyntax extends BlockSyntax {
   @override
   Node parse(BlockParser parser) {
     var match = pattern.firstMatch(parser.current);
+
     // tags could be pre / code
     var tag = abbreviations[match[1]];
     // dots following tag
@@ -365,7 +362,7 @@ class NoTextileBlockSyntax extends BlockSyntax {
   const NoTextileBlockSyntax();
 
   /// The line starting with 'notextile' must be ignore in parsing.
-  /// check it at https://regex101.com/r/iiCQun/2
+  /// check regex [here](https://regex101.com/r/iiCQun/2)
   @override
   RegExp get pattern => RegExp(r'^notextile\.\s(.*)$', multiLine: true);
 
@@ -436,7 +433,7 @@ class BlockTagBlockHtmlSyntax extends BlockHtmlSyntax {
       r'figcaption|figure|footer|form|frame|frameset|h1|head|header|hr|html|'
       r'iframe|legend|li|link|main|menu|menuitem|meta|nav|noframes|ol|optgroup|'
       r'option|p|param|section|source|summary|table|tbody|td|tfoot|th|thead|'
-      'title|tr|track|ul)'
+      r'title|tr|track|ul)'
       r'(?:\s|>|/>|$)');
 
   @override
@@ -478,3 +475,89 @@ class OtherTagBlockHtmlSyntax extends BlockTagBlockHtmlSyntax {
   const OtherTagBlockHtmlSyntax();
 }
 //endregion
+
+/// Parse Block Quotation blocks from document.
+class BlockQuotationSyntax extends BlockSyntax {
+  const BlockQuotationSyntax();
+
+  /// Find footer starting a line.
+  ///
+  /// check for regex [here](https://regex101.com/r/Ummj81/1)
+  static final _footerTagPattern =
+      RegExp(r'<(?:footer|FOOTER)>([\s\S]*?)<\/(?:footer|FOOTER)>');
+
+  /// Find block quote starting a line.
+  ///
+  /// match[1] has link in description.
+  /// check for regex [here](https://regex101.com/r/87q7CJ/5)
+  @override
+  RegExp get pattern => RegExp(r'^bq(\.{1,2})(?:\:(.[^\s]+))?\s(?:(.*)$)?');
+
+  @override
+  Node parse(BlockParser parser) {
+    var match = pattern.firstMatch(parser.current);
+
+    // number of dots following tag.
+    var dots = match[1].length;
+    // citation link, if any.
+    var link = match[2];
+    var cite = link?.isNotEmpty ?? false ? {'cite': link} : <String, String>{};
+
+    var nodes = <Node>[];
+
+    // capture inline content, if any.
+    var inlineContent = match[3];
+    // check for inline content soon after pre | bc tags.
+    if (inlineContent?.isNotEmpty ?? false) {
+      var lines = <String>[];
+      lines.add(inlineContent);
+      // consume all consecutive lines from tags until next blank line.
+      while (!parser.isDone &&
+          !parser.matches(_emptyPattern) &&
+          !parser.matchesNext(_footerTagPattern)) {
+        parser.advance();
+        lines.add(parser.current);
+      }
+      parser.advance();
+
+      nodes.add(Element.create('p', [RawContent(lines.join('\n'))]));
+
+      // check for footer tags.
+      if (parser.matches(_footerTagPattern)) {
+        nodes.add(Text(parser.current));
+        parser.advance();
+      }
+    }
+
+    if (dots > 1) nodes.addAll(_parserChildBlocks(parser));
+
+    return Element('blockquote', nodes, cite);
+  }
+
+  List<Node> _parserChildBlocks(BlockParser parser) {
+    var elements = <Node>[];
+
+    while (!parser.isDone) {
+      var lines = <String>[];
+      // parser separate line into separate block.
+      while (!parser.matches(_emptyPattern)) {
+        // check for footer tags.
+        if (parser.matches(_footerTagPattern)) {
+          elements.add(Text(parser.current));
+        } else {
+          lines.add(parser.current);
+        }
+        parser.advance();
+      }
+
+      // add only non-empty block
+      if (lines.isNotEmpty) {
+        elements.add(Element.create('p', [RawContent(lines.join('\n'))]));
+      }
+      parser.advance();
+
+      if (parser.matches(_newBlockPattern)) break;
+    }
+    return elements;
+  }
+}
