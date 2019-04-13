@@ -64,13 +64,11 @@ class HtmlRenderer implements NodeVisitor {
 
   @override
   void visitElementAfter(Element element) {
-    // TODO: implement visitElementAfter
     buffer.write('</${element.tag}>');
   }
 
   @override
   bool visitElementBefore(Element element) {
-    // TODO: implement visitElementBefore
     // Hackish. Separate block-level elements with newlines.
     if (buffer.isNotEmpty && _blockTags.firstMatch(element.tag) != null) {
       buffer.write('\n');

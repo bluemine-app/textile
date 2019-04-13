@@ -290,35 +290,34 @@ class PreFormattedSyntax extends BlockSyntax {
   @override
   Node parse(BlockParser parser) {
     var match = pattern.firstMatch(parser.current);
+    // tags could be pre / code
     var tag = abbreviations[match[1]];
+    // dots following tag
     var dots = match[2].length;
+    // content following tag and dots.
     var inlineContent = match[3];
 
-    //TODO: optimize below code.
-    String escaped;
-    if (dots > 1) {
-      var content = <String>[];
-      if (inlineContent?.isNotEmpty ?? false) {
-        content.add(inlineContent);
-      }
+    var lines = <String>[];
+
+    // check for inline content soon after pre | bc tags.
+    if (inlineContent?.isNotEmpty ?? false) {
+      lines.add(inlineContent);
       parser.advance();
-      content.addAll(parseChildLines(parser));
-      escaped = escapeHtml(content.join('\n'));
     } else {
-      // find a non empty line for parsing
-      if (inlineContent?.isEmpty ?? true) {
-        while (!parser.isDone) {
-          parser.advance();
-          inlineContent = parser.current;
-          // break if content found in line
-          if (inlineContent?.isNotEmpty ?? false) break;
-        }
-      } else {
+      parser.advance();
+      // consume all consecutive lines from tags until next blank line.
+      while (!parser.isDone && !parser.matches(_emptyPattern)) {
+        lines.add(parser.current);
         parser.advance();
       }
-
-      escaped = escapeHtml(inlineContent);
     }
+
+    if (dots > 1) {
+      // parse all below content until found next block statement.
+      lines.addAll(parseChildLines(parser));
+    }
+
+    var escaped = escapeHtml(lines.join('\n'));
     return tag == 'code'
         ? Element.create('pre', [Element.text(tag, escaped)])
         : Element.text(tag, escaped);
