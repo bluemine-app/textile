@@ -75,11 +75,15 @@ bq.:http://textpattern.com/ A cited quotation.
 bq.. Beginning of the quotation.
 <footer>Sonal Todkar</footer>
 
+ShimmerRecyclerView is an custom RecyclerView library based on Facebook's
+
+most of libraries doesn't not support runtime switching of `LayoutManager`
+
+h3. Something Other Heading.
 Another paragraph, also part of the quote.
 
+bq.. Normal text continues here.
 <footer>Omkar Todkar</footer>
-
-p. Normal text continues here.
 
 bq. A journey of a thousand miles begins with a single step.
 <footer>Confucius (circa 551-478 BC)</footer>

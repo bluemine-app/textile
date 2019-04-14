@@ -66,8 +66,8 @@ class BlockParser {
   /// Index of the current line.
   int _pos = 0;
 
-  /// Whether the parser has encountered a blank line between two block-level
-  /// elements.
+  /// Whether the parser has encountered a
+  /// blank line between two block-level elements.
   bool encounteredBlankLine = false;
 
   /// All standard [BlockSyntax] to be parsed
@@ -266,6 +266,38 @@ class CommentBlockSyntax extends BlockSyntax {
   }
 }
 
+/// Parse notextile block syntax.
+class NoTextileBlockSyntax extends BlockSyntax {
+  const NoTextileBlockSyntax();
+
+  /// The line starting with 'notextile' must be ignore in parsing.
+  /// check regex [here](https://regex101.com/r/iiCQun/2)
+  @override
+  RegExp get pattern => RegExp(r'^notextile\.\s(.*)$', multiLine: true);
+
+  @override
+  bool get canEndBlock => true;
+
+  @override
+  Node parse(BlockParser parser) {
+    var lines = <String>[];
+    var match = pattern.firstMatch(parser.current);
+
+    var content = match[1];
+    // consume first line if content is not empty.
+    if (content?.isNotEmpty ?? false) {
+      lines.add(content);
+    }
+
+    parser.advance(); // then, consumer until meet blank line.
+    while (!parser.isDone && !parser.matches(_emptyPattern)) {
+      lines.add(parser.current);
+      parser.advance();
+    }
+    return Text(lines.join('\n'));
+  }
+}
+
 /// Parse headers in document.
 class HeaderSyntax extends BlockSyntax {
   const HeaderSyntax();
@@ -390,34 +422,69 @@ class ParagraphSyntax extends BlockSyntax {
   }
 }
 
-class NoTextileBlockSyntax extends BlockSyntax {
-  const NoTextileBlockSyntax();
+/// Parse Block Quotation blocks from document.
+class BlockQuotationSyntax extends BlockSyntax {
+  const BlockQuotationSyntax();
 
-  /// The line starting with 'notextile' must be ignore in parsing.
-  /// check regex [here](https://regex101.com/r/iiCQun/2)
+  /// Find block quote starting a line.
+  ///
+  /// match[1] has link in description.
+  /// check for regex [here](https://regex101.com/r/87q7CJ/5)
   @override
-  RegExp get pattern => RegExp(r'^notextile\.\s(.*)$', multiLine: true);
-
-  @override
-  bool get canEndBlock => true;
+  RegExp get pattern => RegExp(r'^bq(\.{1,2})(?:\:(.[^\s]+))?\s(?:(.*)$)?');
 
   @override
   Node parse(BlockParser parser) {
-    var lines = <String>[];
     var match = pattern.firstMatch(parser.current);
+    // number of dots following tag.
+    var dots = match[1].length;
 
-    var content = match[1];
-    // consume first line if content is not empty.
-    if (content?.isNotEmpty ?? false) {
-      lines.add(content);
+    // citation link, if any.
+    var link = match[2];
+    var cite = // quotation cite.
+        link?.isNotEmpty ?? false ? {'cite': link} : <String, String>{};
+
+    var lines = <String>[];
+
+    // consume line content, if any
+    var inlineContent = match[3];
+    if (inlineContent?.isNotEmpty ?? false) {
+      lines.add(inlineContent);
+      parser.advance();
+
+      // consume all following consecutive lines.
+      while (!parser.matches(_emptyPattern)) {
+        lines.add(parser.current);
+        parser.advance();
+      }
     }
 
-    parser.advance(); // then, consumer until meet blank line.
-    while (!parser.isDone && !parser.matches(_emptyPattern)) {
+    if (dots > 1) lines.addAll(parseChildLines(parser));
+
+    // Recursively parse the contents of the blockquote.
+    var children = BlockParser(lines, parser.document).parseLines();
+
+    return Element('blockquote', children, cite);
+  }
+
+  /// Parsing child lines only for two dots.
+  @override
+  List<String> parseChildLines(BlockParser parser) {
+    var lines = <String>[];
+
+    while (!parser.isDone) {
       lines.add(parser.current);
       parser.advance();
+
+      if (parser.blockSyntaxes.firstWhere((s) => s.canParse(parser))
+          is ParagraphSyntax) {
+        lines.add(parser.current);
+        parser.advance();
+      } else {
+        break;
+      }
     }
-    return Text(lines.join('\n'));
+    return lines;
   }
 }
 //endregion
@@ -507,89 +574,3 @@ class OtherTagBlockHtmlSyntax extends BlockTagBlockHtmlSyntax {
   const OtherTagBlockHtmlSyntax();
 }
 //endregion
-
-/// Parse Block Quotation blocks from document.
-class BlockQuotationSyntax extends BlockSyntax {
-  const BlockQuotationSyntax();
-
-  /// Find footer starting a line.
-  ///
-  /// check for regex [here](https://regex101.com/r/Ummj81/1)
-  static final _footerTagPattern =
-      RegExp(r'<(?:footer|FOOTER)>([\s\S]*?)<\/(?:footer|FOOTER)>');
-
-  /// Find block quote starting a line.
-  ///
-  /// match[1] has link in description.
-  /// check for regex [here](https://regex101.com/r/87q7CJ/5)
-  @override
-  RegExp get pattern => RegExp(r'^bq(\.{1,2})(?:\:(.[^\s]+))?\s(?:(.*)$)?');
-
-  @override
-  Node parse(BlockParser parser) {
-    var match = pattern.firstMatch(parser.current);
-
-    // number of dots following tag.
-    var dots = match[1].length;
-    // citation link, if any.
-    var link = match[2];
-    var cite = link?.isNotEmpty ?? false ? {'cite': link} : <String, String>{};
-
-    var nodes = <Node>[];
-
-    // capture inline content, if any.
-    var inlineContent = match[3];
-    // check for inline content soon after pre | bc tags.
-    if (inlineContent?.isNotEmpty ?? false) {
-      var lines = <String>[];
-      lines.add(inlineContent);
-      // consume all consecutive lines from tags until next blank line.
-      while (!parser.isDone &&
-          !parser.matches(_emptyPattern) &&
-          !parser.matchesNext(_footerTagPattern)) {
-        parser.advance();
-        lines.add(parser.current);
-      }
-      parser.advance();
-
-      nodes.add(Element.create('p', [RawContent(lines.join('\n'))]));
-
-      // check for footer tags.
-      if (parser.matches(_footerTagPattern)) {
-        nodes.add(Text(parser.current));
-        parser.advance();
-      }
-    }
-
-    if (dots > 1) nodes.addAll(_parserChildBlocks(parser));
-
-    return Element('blockquote', nodes, cite);
-  }
-
-  List<Node> _parserChildBlocks(BlockParser parser) {
-    var elements = <Node>[];
-
-    while (!parser.isDone) {
-      var lines = <String>[];
-      // parser separate line into separate block.
-      while (!parser.matches(_emptyPattern)) {
-        // check for footer tags.
-        if (parser.matches(_footerTagPattern)) {
-          elements.add(Text(parser.current));
-        } else {
-          lines.add(parser.current);
-        }
-        parser.advance();
-      }
-
-      // add only non-empty block
-      if (lines.isNotEmpty) {
-        elements.add(Element.create('p', [RawContent(lines.join('\n'))]));
-      }
-      parser.advance();
-
-      if (parser.matches(_newBlockPattern)) break;
-    }
-    return elements;
-  }
-}
