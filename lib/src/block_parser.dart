@@ -101,6 +101,9 @@ class BlockParser {
     /*  Block Quotation block lines */
     const BlockQuotationSyntax(),
 
+    /* Bullet or Numbered List block lines */
+    // const ListSyntax(),
+
     /* Paragraph block lines */
     const ParagraphSyntax()
   ];
@@ -274,9 +277,6 @@ class NoTextileBlockSyntax extends BlockSyntax {
   /// check regex [here](https://regex101.com/r/iiCQun/2)
   @override
   RegExp get pattern => RegExp(r'^notextile\.\s(.*)$', multiLine: true);
-
-  @override
-  bool get canEndBlock => true;
 
   @override
   Node parse(BlockParser parser) {
@@ -493,9 +493,6 @@ class BlockQuotationSyntax extends BlockSyntax {
 /// Html Block Syntax
 abstract class BlockHtmlSyntax extends BlockSyntax {
   const BlockHtmlSyntax();
-
-  @override
-  bool get canEndBlock => true;
 }
 
 /// Parse long Html block syntax in document.
@@ -578,24 +575,21 @@ class OtherTagBlockHtmlSyntax extends BlockTagBlockHtmlSyntax {
 //region List BlockSyntax
 
 /// Parse ordered or unordered list block syntax from document.
-class BulletListSyntax extends BlockSyntax {
+class ListSyntax extends BlockSyntax {
   /// Find reference id notation.
   /// check regex [here](https://regex101.com/r/fe42fj/1)
   static final _referenceIdPattern = RegExp(r'#(\w*)');
 
-  /// Find type of list.
-  /// check regex [here](https://regex101.com/r/3EPAQw/2)
-  static final _typeOfListPattern = RegExp(r'^[#*]');
-
   /// Pair of type notation and respective tag.
-  static final typeTags = {'#': 'ol', '*': 'ul'};
+  static final _typeTags = {'#': 'ol', '*': 'ul'};
 
-  const BulletListSyntax();
+  const ListSyntax();
 
   /// Various groups matched in bullet list Regex.
   /// check regex [here](https://regex101.com/r/vmZIOm/1)
   ///
-  /// 1. Type of list whether ordered or unordered.
+  /// Regex groups are as following:
+  /// 1. List type (ordered or unordered).
   /// 2. Start or continue last number for ordered list only, if any.
   /// 3. CSS classes and reference ids attributes to be added in list, if any.
   /// 4. Lang attribute, if any.
@@ -604,36 +598,67 @@ class BulletListSyntax extends BlockSyntax {
   /// 7. Inline list item content.
   @override
   RegExp get pattern => RegExp(
-      r'^([*#]+)([\d_])?(?:\((.*)\))?(?:\[([a-z]{2})\])?(?:\{(.*)\})?(\.)? ?(.*)',
+      r'^([*#]+)' // Decide tag whether ordered or unordered.
+      r'([\d_])?' // Start or continue from last number (for ordered list only), optional.
+      r'(?:\((.*)\))?' // CSS classes and/or reference id, optional.
+      r'(?:\[([a-z]{2})\])?' // Language 'lang' attribute, optional.
+      r'(?:\{(.*)\})?' // CSS style rules, optional.
+      r'(\.)? ' // Dot optional and the required space.
+      r'(.*)', // Inline content.
       multiLine: true);
 
   @override
-  bool get canEndBlock => true;
-
-  @override
   Node parse(BlockParser parser) {
+    var match = pattern.firstMatch(parser.current);
+    var tag = _getTag(match[1]);
+
+    // prepare element attributes.
+    var id = _getReferenceId(match[3]);
+    var attributes = _createOrAppendStyling(match[5], {});
+    var classes = _getClasses(match[3]);
+    if (classes?.isNotEmpty ?? false) attributes['class'] = classes;
+
+    // extract inline and following content
+    var content = _contentParse(parser);
+
+    print('tag: $tag, id: $id, attributes: $attributes, content: $content');
     return null;
   }
 
+  /// Extract inline content along with following lines, if any.
+  String _contentParse(BlockParser parser) {
+    var match = pattern.firstMatch(parser.current);
+    var content = match[7];
+    if (content?.isEmpty ?? true) {
+      // consume all consecutive lines.
+      while (!parser.isDone &&
+          (!parser.matches(_emptyPattern) ||
+              BlockSyntax.isAtBlockEnd(parser))) {
+        content += parser.current + '\n';
+        parser.advance();
+      }
+    }
+    return content;
+  }
+
   /// Extract type of list (ordered or unordered) from
-  /// group 1 of [pattern] and [typeTags].
-  String _getTag(String group1) =>
-      typeTags[_typeOfListPattern.firstMatch(group1)?.group(1)];
+  /// group 1 of [pattern] and [_typeTags].
+  String _getTag(String group1) => _typeTags[group1[0]];
 
   /// Extract reference id from group 3 of [pattern], if available.
-  String _getRefernceId(String group3) =>
-      _referenceIdPattern.firstMatch(group3)?.group(1);
+  String _getReferenceId(String group3) =>
+      _referenceIdPattern.firstMatch(group3 ?? '')?.group(1) ?? null;
 
   /// Extract CSS classes from group3 of [pattern].
   String _getClasses(String group3) =>
-      group3.replaceAll(_referenceIdPattern, '');
+      group3?.replaceAll(_referenceIdPattern, '') ?? null;
 
   /// Create or append CSS styling rule.
   Map<String, String> _createOrAppendStyling(
       String group5, Map<String, String> attributes) {
-    if (attributes?.isEmpty ?? true) {
-      return {'style': group5};
-    }
+    if (group5 == null) return attributes;
+
+    if (attributes?.isEmpty ?? true) return {'style': group5};
 
     // extract existing values and append new values to it.
     var existing = attributes['style'];
