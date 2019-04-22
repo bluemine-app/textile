@@ -4,7 +4,7 @@ This document explains how to describe issues in a way that makes it easier for 
 
 Once you are logged in[1], follow these steps:
 
-* Find out if the issue you encountered has been reported before:
+*(class#id). Find out if the issue you encountered has been reported before:
 ** If the issue has been reported before and the issue is still open, you can add a description of how you encountered the bug (see guidelines under "Describing the issue", below);
 ** If the issue was reported in the past and closed, you can reopen it and describe how you encountered the issue. (Alternatively, it is possible to create a new bug and link the old one with the new one.)
 * If the issue is new, you can report[2] it by using the "New Issue":/projects/open-bluemine/issues/new from drop down menu in top left "+" button.
@@ -78,7 +78,7 @@ fn3. https://wiki.gpii.net/w/How_to_Write_a_Good_Bug_Report
 
 h2. List Examples
 
-#(class#id).
+#(class#id3).
 #(first) Item 1
 #(second) Item 2
 #(third) Item 3
@@ -87,8 +87,10 @@ h2. List Examples
 ## Somthing
 *(second) Bullet 2
 *(third) Bullet 3
+* Item three
+something
 
-#5(class class1 class2 #id)[fr]{font-size:0.8em;color:red} Time outside means lower stress
+#5(class class1 class2 #id4)[fr]{font-size:0.8em;color:red} Time outside means lower stress
 
 #8[en]{color:red} Enumerated list, starting by number eight
 # Item 11

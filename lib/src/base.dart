@@ -34,11 +34,8 @@ class Element implements Node {
 
   String generatedId;
 
-  /// Instantiates a [tag] Element with [children] and [attributes].
-  Element(this.tag, this.children, this.attributes);
-
   /// Instantiates a [tag] Element with [children].
-  Element.create(this.tag, this.children) : attributes = <String, String>{};
+  Element(this.tag, this.children) : attributes = <String, String>{};
 
   /// Instantiates an empty, self-closing [tag] Element.
   Element.empty(this.tag)
@@ -107,7 +104,6 @@ class RawContent implements Node {
 ///
 /// Renderer or other AST transformers should implement this.
 abstract class NodeVisitor {
-  
   /// Called when a Text node has been reached.
   void visitText(Text text);
 

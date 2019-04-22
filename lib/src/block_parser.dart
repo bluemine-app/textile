@@ -70,6 +70,9 @@ class BlockParser {
   /// blank line between two block-level elements.
   bool encounteredBlankLine = false;
 
+  /// List item number continuation reference.
+  int lastOrderedListNumber;
+
   /// All standard [BlockSyntax] to be parsed
   final List<BlockSyntax> standardBlockSyntaxes = [
     /* Blank lines */
@@ -102,7 +105,7 @@ class BlockParser {
     const BlockQuotationSyntax(),
 
     /* Bullet or Numbered List block lines */
-    // const ListSyntax(),
+    const ListSyntax(),
 
     /* Paragraph block lines */
     const ParagraphSyntax()
@@ -320,7 +323,7 @@ class HeaderSyntax extends BlockSyntax {
     var tag = match[1];
     var alignment = BlockSyntax._parseTextAlignment(match[2]);
     var contents = RawContent(match[3].trim());
-    return Element(tag, [contents], alignment);
+    return Element(tag, [contents])..attributes.addAll(alignment);
   }
 }
 
@@ -380,7 +383,7 @@ class PreFormattedSyntax extends BlockSyntax {
 
     var escaped = escapeHtml(lines.join('\n'));
     return tag == 'code'
-        ? Element.create('pre', [Element.text(tag, escaped)])
+        ? Element('pre', [Element.text(tag, escaped)])
         : Element.text(tag, escaped);
   }
 
@@ -418,7 +421,7 @@ class ParagraphSyntax extends BlockSyntax {
     //TODO: parse link references while doing task #36
 
     var contents = RawContent(childLines.join('\n'));
-    return Element.create('p', [contents]);
+    return Element('p', [contents]);
   }
 }
 
@@ -464,7 +467,7 @@ class BlockQuotationSyntax extends BlockSyntax {
     // Recursively parse the contents of the blockquote.
     var children = BlockParser(lines, parser.document).parseLines();
 
-    return Element('blockquote', children, cite);
+    return Element('blockquote', children)..attributes.addAll(cite);
   }
 
   /// Parsing child lines only for two dots.
@@ -603,47 +606,125 @@ class ListSyntax extends BlockSyntax {
       r'(?:\((.*)\))?' // CSS classes and/or reference id, optional.
       r'(?:\[([a-z]{2})\])?' // Language 'lang' attribute, optional.
       r'(?:\{(.*)\})?' // CSS style rules, optional.
-      r'(\.)? ' // Dot optional and the required space.
+      r'([\. ])' // Dot optional and the required space.
       r'(.*)', // Inline content.
       multiLine: true);
 
   @override
   Node parse(BlockParser parser) {
     var match = pattern.firstMatch(parser.current);
-    var tag = _getTag(match[1]);
 
-    // prepare element attributes.
-    var id = _getReferenceId(match[3]);
+    // initial tag and level.
+    var tag = _getTag(match[1]);
+    var level = _getLevel(match[1]);
+
+    // top level prepare attributes.
     var attributes = _createOrAppendStyling(match[5], {});
     var classes = _getClasses(match[3]);
     if (classes?.isNotEmpty ?? false) attributes['class'] = classes;
+    var id = _getReferenceId(match[3]);
+    if (id?.isNotEmpty ?? false) attributes['id'] = id;
 
-    // extract inline and following content
-    var content = _contentParse(parser);
-
-    print('tag: $tag, id: $id, attributes: $attributes, content: $content');
-    return null;
-  }
-
-  /// Extract inline content along with following lines, if any.
-  String _contentParse(BlockParser parser) {
-    var match = pattern.firstMatch(parser.current);
-    var content = match[7];
-    if (content?.isEmpty ?? true) {
-      // consume all consecutive lines.
-      while (!parser.isDone &&
-          (!parser.matches(_emptyPattern) ||
-              BlockSyntax.isAtBlockEnd(parser))) {
-        content += parser.current + '\n';
-        parser.advance();
-      }
+    // add start or continuation attribute for ordered list.
+    if (_isOrderedType(tag) && match[2] != null) {
+      var continuation = match[2];
+      attributes['start'] = continuation == '_'
+          ? parser.lastOrderedListNumber.toString()
+          : '$continuation';
     }
-    return content;
+
+    var children = <Node>[];
+
+    // top level inline content, if any.
+    var content = match[7];
+    if (content?.isNotEmpty ?? false) {
+      children.add(Element('li', [RawContent(content)]));
+    }
+
+    parser.advance(); // parse all list children.
+    children.addAll(_parseChildren(parser, tag, level));
+
+    // save start number + children length as last ordered list item number.
+    if (_isOrderedType(tag)) {
+      var continuation = match[2];
+      var start =
+          continuation == '_' ? parser.lastOrderedListNumber : continuation;
+      parser.lastOrderedListNumber =
+          (start == null ? 0 : int.parse('$start')) + children.length;
+    }
+
+    return Element(tag, children)..attributes.addAll(attributes);
   }
+
+  // list item children parser
+  List<Node> _parseChildren(BlockParser parser, String tag, int level) {
+    //  loop over lines
+    var children = <Node>[];
+    while (!parser.isDone &&
+        (!parser.matches(_emptyPattern) || BlockSyntax.isAtBlockEnd(parser))) {
+      var match = pattern.firstMatch(parser.current);
+
+      print(parser.current);
+      var group1 = match?.group(1);
+      if (group1 == null) {
+        parser.advance();
+        break;
+      }
+
+      var isSameTag = _getTag(group1) == tag;
+      var currentLevel = _getLevel(group1);
+
+      if (isSameTag && currentLevel == level) {
+        // prepare attributes.
+        var attributes = _createOrAppendStyling(match[5], {});
+        var classes = _getClasses(match[3]);
+        if (classes?.isNotEmpty ?? false) attributes['class'] = classes;
+        var id = _getReferenceId(match[3]);
+        if (id?.isNotEmpty ?? false) attributes['id'] = id;
+
+        // inline content, if any.
+        var content = match[7];
+        if (content?.isNotEmpty ?? false) {
+          children.add(Element('li', [RawContent(content)]));
+          parser.advance();
+        }
+      } else if (level > currentLevel) {
+        // if upper level content end loop.
+        return children;
+      } else
+        children.add(parse(parser));
+    }
+    return children;
+  }
+
+  List<String> _peekListUntilNextBlock(BlockParser parser) {
+    var lines = <String>[];
+    lines.add(parser.current);
+
+    bool _matches(String line) => pattern.firstMatch(line) != null;
+
+    for (var i = 1; true; i++) {
+      // peek all lines that matches list syntax
+      if (_matches(parser.peek(i))) lines.add('\n' + parser.peek(i));
+
+      // if next 2 line does not matches list pattern
+      if (!_matches(parser.peek(i + 1)) && !_matches(parser.peek(i + 2))) break;
+    }
+    return lines;
+  }
+
+  /// Checks if syntax contains dot '.' at end of statement.
+  bool _hasContainerModifier(Match match) => match[6] != null;
+
+  /// Check if list type is ordered.
+  bool _isOrderedType(String tag) => (tag == '#' || tag == 'ol');
 
   /// Extract type of list (ordered or unordered) from
   /// group 1 of [pattern] and [_typeTags].
   String _getTag(String group1) => _typeTags[group1[0]];
+
+  /// Number of tag syntax defines level.
+  int _getLevel(String group1) => group1?.length ?? 0;
 
   /// Extract reference id from group 3 of [pattern], if available.
   String _getReferenceId(String group3) =>
@@ -651,7 +732,7 @@ class ListSyntax extends BlockSyntax {
 
   /// Extract CSS classes from group3 of [pattern].
   String _getClasses(String group3) =>
-      group3?.replaceAll(_referenceIdPattern, '') ?? null;
+      group3?.replaceAll(_referenceIdPattern, '')?.trim() ?? null;
 
   /// Create or append CSS styling rule.
   Map<String, String> _createOrAppendStyling(
