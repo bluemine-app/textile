@@ -76,13 +76,13 @@ class BlockParser {
 
   /// All standard [BlockSyntax] to be parsed
   final List<BlockSyntax> standardBlockSyntaxes = [
-    /* Blank lines */
+    /* Blank / Empty */
     const EmptyBlockSyntax(),
 
-    /* Textile Comments lines */
+    /* Textile Comments */
     const CommentBlockSyntax(),
 
-    /* Html lines  */
+    /* Raw Html  */
     const BlockTagBlockHtmlSyntax(),
     LongBlockHtmlSyntax(r'^ {0,3}<pre(?:\s|>|$)', '</pre>'),
     LongBlockHtmlSyntax(r'^ {0,3}<script(?:\s|>|$)', '</script>'),
@@ -93,22 +93,25 @@ class BlockParser {
     LongBlockHtmlSyntax('^ {0,3}<!\\[CDATA\\[', '\\]\\]>'),
     const OtherTagBlockHtmlSyntax(),
 
-    /* Textile Header lines */
+    /* Textile Header */
     const HeaderSyntax(),
 
-    /* no Textile lines */
+    /* no Textile */
     const NoTextileBlockSyntax(),
 
-    /* Pre or Code block lines */
+    /* Pre or Code block */
     const PreFormattedSyntax(),
 
-    /*  Block Quotation block lines */
+    /*  Block Quotation block */
     const BlockQuotationSyntax(),
 
-    /* Bullet or Numbered List block lines */
+    /* Bullet or Numbered List block */
     const ListSyntax(),
 
-    /* Paragraph block lines */
+    /* Definition List block */
+    // const DefinitionListSyntax(),
+
+    /* Paragraph block */
     const ParagraphSyntax()
   ];
 
@@ -758,6 +761,32 @@ class ListSyntax extends BlockSyntax {
     attributes['style'] = existing + group5;
 
     return attributes;
+  }
+}
+
+/// Parse definition list block syntax from document.
+class DefinitionListSyntax extends BlockSyntax {
+  /// Definition ending pattern
+  /// check regex [here](https://regex101.com/r/9NKfld/1)
+  ///
+  /// 1. continuation content of `<dd>`.
+  static final _endPattern = RegExp(r'(.*) ?=:$');
+
+  const DefinitionListSyntax();
+
+  /// Validates if definition list starting.
+  /// check regex [here](https://regex101.com/r/2mNdBw/1)
+  ///
+  /// 1. title or `<dt>` content.
+  /// 2. description or `<dd>` content.
+  @override
+  RegExp get pattern => RegExp(r'^- (.*) ?:= ?(.*)');
+
+  @override
+  Node parse(BlockParser parser) {
+    var match = pattern.firstMatch(parser.current);
+    
+    return null;
   }
 }
 //endregion
