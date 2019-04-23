@@ -24,7 +24,11 @@ String read(String path) => File(path).readAsStringSync();
 void main() {
   group('Html Renderer', () {
     test('Test block_paragraph', () async {
+      var start = DateTime.now();
       var html = textileToHtml(read('test/units/block_paragraph.unit'));
+      var millis = DateTime.now().difference(start).inMilliseconds;
+
+      // write file to results
       var logFile = File('test/results/block_paragraph.html');
       var sink = logFile.openWrite();
       sink.write(html);
@@ -32,12 +36,17 @@ void main() {
       await sink.close();
 
       // after finishing job print it.
-      print('wrote to file: ${logFile.path}\n\n');
-      print('$html\n');
+      var filename = logFile.path.substring(logFile.parent.path.length + 1);
+      print(
+          'Processed $filename located at file://${logFile.absolute.path} ($millis ms)\n');
     });
 
     test('Test code_paragraph', () async {
+      var start = DateTime.now();
       var html = textileToHtml(read('test/units/code_paragraph.unit'));
+      var millis = DateTime.now().difference(start).inMilliseconds;
+
+      // write file to results
       var logFile = File('test/results/code_paragraph.html');
       var sink = logFile.openWrite();
       sink.write(html);
@@ -45,8 +54,9 @@ void main() {
       await sink.close();
 
       // after finishing job print it.
-      print('wrote to file: ${logFile.path}\n\n');
-      print('$html\n');
+      var filename = logFile.path.substring(logFile.parent.path.length + 1);
+      print(
+          'Processed $filename located at file://${logFile.absolute.path} ($millis ms)\n');
     });
   });
 }
