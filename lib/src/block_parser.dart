@@ -109,7 +109,7 @@ class BlockParser {
     const ListSyntax(),
 
     /* Definition List block */
-    // const DefinitionListSyntax(),
+    const DescriptionListSyntax(),
 
     /* Paragraph block */
     const ParagraphSyntax()
@@ -765,14 +765,14 @@ class ListSyntax extends BlockSyntax {
 }
 
 /// Parse definition list block syntax from document.
-class DefinitionListSyntax extends BlockSyntax {
+class DescriptionListSyntax extends BlockSyntax {
   /// Definition ending pattern
   /// check regex [here](https://regex101.com/r/9NKfld/1)
   ///
   /// 1. continuation content of `<dd>`.
-  static final _endPattern = RegExp(r'(.*) ?=:$');
+  RegExp get _endPattern => RegExp(r'(.*) ?=:$');
 
-  const DefinitionListSyntax();
+  const DescriptionListSyntax();
 
   /// Validates if definition list starting.
   /// check regex [here](https://regex101.com/r/2mNdBw/1)
@@ -784,9 +784,42 @@ class DefinitionListSyntax extends BlockSyntax {
 
   @override
   Node parse(BlockParser parser) {
-    var match = pattern.firstMatch(parser.current);
-    
-    return null;
+    var children = _parseChildren(parser);
+    return Element('dl', children);
+  }
+
+  /// Parse child list items of `dl` list.
+  List<Node> _parseChildren(BlockParser parser) {
+    var nodes = <Node>[];
+    while (!parser.isDone) {
+      var match = pattern.firstMatch(parser.current);
+
+      // encountered something else...
+      if (match == null) break;
+
+      // add title
+      nodes.add(Element('dt', [RawContent(match[1])]));
+
+      // extract details
+      var details = match[2];
+      parser.advance();
+      // find consecutive lines, if any.
+      while (!parser.isDone &&
+          !BlockSyntax.isAtBlockEnd(parser) &&
+          !parser.matches(_emptyPattern)) {
+        var end = _endPattern.firstMatch(parser.current);
+        details += '\n' + (end?.group(1) ?? parser.current);
+        parser.advance();
+
+        // is current line end of details
+        if (end != null) {
+          break;
+        }
+      }
+      // add details
+      nodes.add(Element('dd', [RawContent(details)]));
+    }
+    return nodes;
   }
 }
 //endregion

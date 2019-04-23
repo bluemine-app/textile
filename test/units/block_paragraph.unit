@@ -58,6 +58,8 @@ h3. Issue Description
 - HTML := HyperText Markup Language, based on SGML.
 - XHTML := HTML 4.0 rewritten to be compliant with XML rules.
 - HTML5 := The latest revision of the HTML standard
+A section that explains how a developer can reproduce the issue, 
+as a series of steps, and what output should be observed;
 Still under development =:
 
 The "Description" field should contain the following information:
