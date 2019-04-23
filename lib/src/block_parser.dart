@@ -26,9 +26,6 @@ import 'util.dart';
 /// check for regex [here](https://regex101.com/r/iF9lHI/1)
 final _emptyPattern = RegExp(r'^(?:[ \t]*)$');
 
-/// One or more whitespace, for compressing.
-// final _oneOrMoreWhitespacePattern = RegExp('[ \n\r\t]+');
-
 /// Find if line is starts a new block.
 /// check for regex [here](https://regex101.com/r/BwoJnd/5)
 final _newBlockPattern =
@@ -45,7 +42,11 @@ final abbreviations = {
   /* HTML Tags */
   'pre': 'pre',
   'bc': 'code',
-  'bq': 'blockquote'
+  'bq': 'blockquote',
+
+  /* List Tags */
+  '#': 'ol',
+  '*': 'ul'
 };
 
 /// BlockParser to parse series of lines into blocks of Textile suitable
@@ -583,8 +584,9 @@ class ListSyntax extends BlockSyntax {
   /// check regex [here](https://regex101.com/r/fe42fj/1)
   static final _referenceIdPattern = RegExp(r'#(\w*)');
 
-  /// Pair of type notation and respective tag.
-  static final _typeTags = {'#': 'ol', '*': 'ul'};
+  /// Find if style attribute values ends with proper ';'.
+  /// check regex [here](https://regex101.com/r/qlYsSw/1)
+  static final _styleAttributeHasColonAtEnd = RegExp(r';$', multiLine: true);
 
   const ListSyntax();
 
@@ -618,6 +620,94 @@ class ListSyntax extends BlockSyntax {
     var tag = _getTag(match[1]);
     var level = _getLevel(match[1]);
 
+    // extract attributes, if any.
+    var attributes = _extractAttributes(match, parser.lastOrderedListNumber);
+
+    var children = <Node>[];
+
+    // extract top level inline content, if any.
+    var content = _extractContent(parser, match[7]);
+    if (content?.isNotEmpty ?? false) {
+      children.add(Element('li', [RawContent(content)]));
+    }
+
+    // parse all children
+    children.addAll(_parseChildren(parser, tag, level));
+
+    // save (start number + children length) as last ordered list item number.
+    if (_isOrderedType(tag)) {
+      var continuation = match[2];
+      var start =
+          continuation == '_' ? parser.lastOrderedListNumber : continuation;
+
+      parser.lastOrderedListNumber =
+          int.parse(start?.toString() ?? '1') + children.length;
+    }
+
+    return Element(tag, children)..attributes.addAll(attributes);
+  }
+
+  /// Parse child list items or nested list.
+  List<Node> _parseChildren(BlockParser parser, String tag, int level) {
+    //  loop over lines
+    var children = <Node>[];
+    while (!parser.isDone &&
+        (!parser.matches(_emptyPattern) || BlockSyntax.isAtBlockEnd(parser))) {
+      var match = pattern.firstMatch(parser.current);
+
+      // if list syntax is missing.
+      if (match?.group(1) == null ?? true) {
+        parser.advance();
+        break;
+      }
+
+      // if any item has continuation syntax
+      if (match?.group(2) != null ?? false) {
+        break;
+      }
+
+      var isSameTag = _getTag(match[1]) == tag;
+      var currentLevel = _getLevel(match[1]);
+
+      if (isSameTag && currentLevel == level) {
+        // prepare attributes.
+        var attributes =
+            _extractAttributes(match, parser.lastOrderedListNumber);
+
+        // inline content, if any.
+        var content = _extractContent(parser, match[7]);
+        if (content?.isNotEmpty ?? false) {
+          children.add(Element('li', [RawContent(content)])
+            ..attributes.addAll(attributes));
+        }
+      } else if (level > currentLevel) {
+        // if upper level content end loop.
+        break;
+      } else {
+        children.add(parse(parser));
+      }
+    }
+    return children;
+  }
+
+  /// Parse inline content of list syntax and it's consecutive next lines.
+  String _extractContent(BlockParser parser, String content) {
+    parser.advance();
+    if (content?.isNotEmpty ?? false) {
+      while (!parser.isDone &&
+          (!BlockSyntax.isAtBlockEnd(parser) &&
+              !parser.matches(_emptyPattern))) {
+        content += '\n' + parser.current;
+        parser.advance();
+      }
+    }
+    return content;
+  }
+
+  /// Extract attributes from list item syntax.
+  Map<String, String> _extractAttributes(Match match, int lineNumber) {
+    var tag = _getTag(match[1]);
+
     // top level prepare attributes.
     var attributes = _createOrAppendStyling(match[5], {});
     var classes = _getClasses(match[3]);
@@ -628,100 +718,18 @@ class ListSyntax extends BlockSyntax {
     // add start or continuation attribute for ordered list.
     if (_isOrderedType(tag) && match[2] != null) {
       var continuation = match[2];
-      attributes['start'] = continuation == '_'
-          ? parser.lastOrderedListNumber.toString()
-          : '$continuation';
+      attributes['start'] =
+          continuation == '_' ? '$lineNumber' : '$continuation';
     }
-
-    var children = <Node>[];
-
-    // top level inline content, if any.
-    var content = match[7];
-    if (content?.isNotEmpty ?? false) {
-      children.add(Element('li', [RawContent(content)]));
-    }
-
-    parser.advance(); // parse all list children.
-    children.addAll(_parseChildren(parser, tag, level));
-
-    // save start number + children length as last ordered list item number.
-    if (_isOrderedType(tag)) {
-      var continuation = match[2];
-      var start =
-          continuation == '_' ? parser.lastOrderedListNumber : continuation;
-      parser.lastOrderedListNumber =
-          (start == null ? 0 : int.parse('$start')) + children.length;
-    }
-
-    return Element(tag, children)..attributes.addAll(attributes);
+    return attributes;
   }
-
-  // list item children parser
-  List<Node> _parseChildren(BlockParser parser, String tag, int level) {
-    //  loop over lines
-    var children = <Node>[];
-    while (!parser.isDone &&
-        (!parser.matches(_emptyPattern) || BlockSyntax.isAtBlockEnd(parser))) {
-      var match = pattern.firstMatch(parser.current);
-
-      print(parser.current);
-      var group1 = match?.group(1);
-      if (group1 == null) {
-        parser.advance();
-        break;
-      }
-
-      var isSameTag = _getTag(group1) == tag;
-      var currentLevel = _getLevel(group1);
-
-      if (isSameTag && currentLevel == level) {
-        // prepare attributes.
-        var attributes = _createOrAppendStyling(match[5], {});
-        var classes = _getClasses(match[3]);
-        if (classes?.isNotEmpty ?? false) attributes['class'] = classes;
-        var id = _getReferenceId(match[3]);
-        if (id?.isNotEmpty ?? false) attributes['id'] = id;
-
-        // inline content, if any.
-        var content = match[7];
-        if (content?.isNotEmpty ?? false) {
-          children.add(Element('li', [RawContent(content)]));
-          parser.advance();
-        }
-      } else if (level > currentLevel) {
-        // if upper level content end loop.
-        return children;
-      } else
-        children.add(parse(parser));
-    }
-    return children;
-  }
-
-  List<String> _peekListUntilNextBlock(BlockParser parser) {
-    var lines = <String>[];
-    lines.add(parser.current);
-
-    bool _matches(String line) => pattern.firstMatch(line) != null;
-
-    for (var i = 1; true; i++) {
-      // peek all lines that matches list syntax
-      if (_matches(parser.peek(i))) lines.add('\n' + parser.peek(i));
-
-      // if next 2 line does not matches list pattern
-      if (!_matches(parser.peek(i + 1)) && !_matches(parser.peek(i + 2))) break;
-    }
-    return lines;
-  }
-
-  /// Checks if syntax contains dot '.' at end of statement.
-  bool _hasContainerModifier(Match match) => match[6] != null;
 
   /// Check if list type is ordered.
   bool _isOrderedType(String tag) => (tag == '#' || tag == 'ol');
 
   /// Extract type of list (ordered or unordered) from
-  /// group 1 of [pattern] and [_typeTags].
-  String _getTag(String group1) => _typeTags[group1[0]];
+  /// group 1 of [pattern] and [abbreviations].
+  String _getTag(String group1) => abbreviations[group1[0]];
 
   /// Number of tag syntax defines level.
   int _getLevel(String group1) => group1?.length ?? 0;
@@ -739,12 +747,16 @@ class ListSyntax extends BlockSyntax {
       String group5, Map<String, String> attributes) {
     if (group5 == null) return attributes;
 
+    // append semi-colon at end if it is missing.
+    if (!_styleAttributeHasColonAtEnd.hasMatch(group5)) group5 += ';';
+
     if (attributes?.isEmpty ?? true) return {'style': group5};
 
     // extract existing values and append new values to it.
     var existing = attributes['style'];
     if (!existing.endsWith(';')) existing += ';';
     attributes['style'] = existing + group5;
+
     return attributes;
   }
 }
