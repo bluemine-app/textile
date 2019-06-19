@@ -422,7 +422,7 @@ class ParagraphSyntax extends BlockSyntax {
       parser.advance();
     }
 
-    //TODO: parse link references while doing task #36
+    //TODO parse link references while doing task #36
 
     var contents = RawContent(childLines.join('\n'));
     return Element('p', [contents]);
